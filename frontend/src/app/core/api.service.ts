@@ -71,6 +71,10 @@ export class ApiService {
   checkAllotments(body: { ipo_id?: number; application_ids?: number[] } = {}): Observable<CheckResponse> {
     return this.http.post<CheckResponse>(`${this.base}/applications/check/`, body);
   }
+  /** Check chosen PANs on any issue, including listed ones. Unconfirmed new records are discarded server-side. */
+  checkPans(ipoId: number, panIds: number[]): Observable<CheckResponse> {
+    return this.http.post<CheckResponse>(`${this.base}/applications/check_pans/`, { ipo_id: ipoId, pan_ids: panIds });
+  }
   events(id: number): Observable<StatusEvent[]> {
     return this.http.get<StatusEvent[]>(`${this.base}/applications/${id}/events/`);
   }

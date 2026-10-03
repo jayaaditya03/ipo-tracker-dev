@@ -158,6 +158,7 @@ export interface CheckRow {
   status: AppStatus;
   shares_applied?: number | null;
   shares_allotted?: number | null;
+  kept?: boolean;
   message: string;
 }
 

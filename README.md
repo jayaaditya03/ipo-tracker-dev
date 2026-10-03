@@ -12,7 +12,7 @@ Track Indian IPO applications across every PAN in a family: apply to an issue wi
 - **Real IPO data from NSE:** current, upcoming and recently closed mainboard and SME issues, with price band, lot size and registrar. NSE does not publish allotment and listing dates, so they are estimated from the SEBI T+3 timeline and marked "est." in the UI.
 - **Bulk apply:** apply to one IPO with several PANs in one request. A PAN that already has an application for that IPO is skipped, and the rest still go through.
 - SEBI rules are enforced: one application per PAN per issue (a database constraint) and the ₹2 lakh retail cap.
-- **Automatic allotment checks across all your PANs:** one click asks the registrar for every pending PAN on an issue and records the result (allotted, partial or not allotted) in the audit log. Supported: **KFin, MUFG Intime and Bigshare**, which handle most issues. For other registrars the app links to their status page.
+- **Automatic allotment checks across all your PANs:** one click asks the registrar for every pending PAN on an issue and records the result (allotted, partial or not allotted) in the audit log. Works on closed and already-listed issues too, for as long as the registrar keeps them on its site. Supported: **KFin, MUFG Intime and Bigshare**, which handle most issues. For other registrars the app links to their status page.
 - Status changes go through one method that writes an append-only audit log, shown as the application's history.
 - The dashboard's aggregate figures are computed in SQL.
 
@@ -47,10 +47,9 @@ npx ng serve                      # http://localhost:4200
 
 | Command | Purpose |
 | --- | --- |
-| `python manage.py sync_ipos` | Pulls current, upcoming and recent IPOs from NSE. Run it daily. `--past-days N` reaches further back (default 45). |
+| `python manage.py sync_ipos` | Pulls current, upcoming and recent IPOs from NSE. Run it daily. `--past-days N` reaches further back (default 90). |
 | `python manage.py refresh_ipo_status` | Updates each IPO's status (Open, Closed, Allotment out, Listed) from today's date. Run it daily. |
 | `python manage.py check_allotments` | Asks registrars about every pending application whose allotment date has arrived. Run it a few times on allotment days. |
-| `python manage.py seed_ipos` | Loads 6 made-up demo issues. Use it for offline demos only. |
 | `pytest` | Runs the backend test suite. |
 | `ruff check .` | Lints the backend. |
 | `cd frontend && npx ng build` | Builds the frontend for production. |
@@ -67,6 +66,7 @@ All endpoints are under `/api/` and need `Authorization: Bearer <access>`, excep
 | GET | `/ipos/`, `/ipos/{id}/`, `/ipos/open_now/` | IPO catalogue. Filters: `status`, `board`, `search` |
 | CRUD | `/applications/` | Your applications. Filters: `status`, `ipo`, `pan`, `search` |
 | POST | `/applications/bulk/` | `{ipo_id, pan_ids[], lots, category, mark_applied}` |
+| POST | `/applications/check_pans/` | `{ipo_id, pan_ids[]}`. Checks any issue, including listed ones. Keeps only the applications the registrar confirms. |
 | POST | `/applications/check/` | Optional `{ipo_id}` or `{application_ids[]}`. Checks allotment with the registrars, up to 25 PANs per call. |
 | POST | `/applications/{id}/set_status/` | `{status, shares_allotted?, note?}` |
 | GET | `/applications/{id}/events/` | Status history |

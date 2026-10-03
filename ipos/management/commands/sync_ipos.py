@@ -18,8 +18,8 @@ class Command(BaseCommand):
     help = "Sync IPOs from NSE."
 
     def add_arguments(self, parser):
-        parser.add_argument("--past-days", type=int, default=45,
-                            help="Also import closed issues that opened within this many days (default 45).")
+        parser.add_argument("--past-days", type=int, default=90,
+                            help="Also import closed issues that opened within this many days (default 90).")
 
     def handle(self, *args, **options):
         try:

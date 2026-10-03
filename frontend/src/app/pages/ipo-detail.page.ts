@@ -112,6 +112,26 @@ const RETAIL_LIMIT = 200000;
             <p class="muted">You need a PAN first. <a routerLink="/pans">Add one</a>.</p>
           }
         </div>
+      } @else if (i.status !== 'WITHDRAWN') {
+        <div class="card">
+          <h2>Check allotment for your PANs</h2>
+          @if (pans().length) {
+            <p class="muted">
+              Pick the PANs that applied. Each one is looked up with {{ i.registrar.name }}. PANs the registrar
+              confirms are saved to your applications; any it has no record of are left out.
+            </p>
+            @for (p of pans(); track p.id) {
+              <label><input type="checkbox" [checked]="checkSel().has(p.id)" (change)="toggleCheck(p.id)" />
+                {{ p.label }} <span class="muted">{{ p.pan_masked }}</span></label>
+            }
+            <button class="primary" (click)="checkPans()" [disabled]="checking() || !checkSel().size">
+              {{ checking() ? 'Asking ' + i.registrar.name + '…' : 'Check ' + checkSel().size + ' PAN(s)' }}
+            </button>
+            <app-check-results [data]="panCheck()" />
+          } @else {
+            <p class="muted">You need a PAN first. <a routerLink="/pans">Add one</a>.</p>
+          }
+        </div>
       }
     }
   `,
@@ -158,8 +178,29 @@ export class IpoDetailPage implements OnInit {
   ngOnInit() {
     const id = Number(this.id());
     this.api.ipo(id).subscribe({ next: (i) => this.ipo.set(i), error: (e) => this.error.set(errorText(e)) });
-    this.api.pans({ is_active: true }).subscribe((p) => this.pans.set(p.results));
+    this.api.pans({ is_active: true }).subscribe((p) => {
+      this.pans.set(p.results);
+      this.checkSel.set(new Set(p.results.map((x) => x.id)));
+    });
     this.loadMine();
+  }
+
+  checkSel = signal<Set<number>>(new Set());
+  panCheck = signal<CheckResponse | null>(null);
+
+  toggleCheck(id: number) {
+    const next = new Set(this.checkSel());
+    next.has(id) ? next.delete(id) : next.add(id);
+    this.checkSel.set(next);
+  }
+
+  checkPans() {
+    this.checking.set(true);
+    this.error.set('');
+    this.api.checkPans(Number(this.id()), [...this.checkSel()]).subscribe({
+      next: (r) => { this.panCheck.set(r); this.checking.set(false); this.loadMine(); },
+      error: (e) => { this.error.set(errorText(e)); this.checking.set(false); },
+    });
   }
 
   checkAllotment() {

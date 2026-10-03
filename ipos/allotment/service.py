@@ -43,6 +43,12 @@ def _apply(app: Application, result: CheckResult) -> None:
         app.save(update_fields=["checked_at", "updated_at"])
         return
 
+    # The registrar knows how many shares were really bid for — correct the
+    # lot count (it is a guess of 1 for applications recorded after the fact).
+    lot = app.ipo.lot_size
+    if result.shares_applied and lot and result.shares_applied % lot == 0:
+        app.lots = result.shares_applied // lot
+
     note = f"Registrar: {result.shares_allotted or 0} of {result.shares_applied or '?'} shares allotted."
     with transaction.atomic():
         event = app.mark_status(new_status, source=StatusEvent.Source.REGISTRAR, note=note, shares=shares)
@@ -80,9 +86,16 @@ def check_applications(apps: Iterable[Application], *, adapters: dict | None = N
             if not ipo.registrar_ref:
                 ref = adapter.find_issue(ipo.name)
                 if ref is None:
+                    closed_long_ago = ipo.close_date and (timezone.localdate() - ipo.close_date).days > 5
+                    message = (
+                        f"{ipo.registrar.name} has taken this issue off its status page (registrars only "
+                        "keep recent issues). Check your demat holdings or the bank's ASBA refund instead."
+                        if closed_long_ago else
+                        f"{ipo.registrar.name} doesn't list this issue yet — results are usually out "
+                        "the day after it closes."
+                    )
                     rows.append({**row, "outcome": Outcome.NOT_PUBLISHED, "status": app.status,
-                                 "message": f"{ipo.registrar.name} doesn't list this issue yet — "
-                                            "results are usually out the day after it closes."})
+                                 "message": message})
                     continue
                 ipo.registrar_ref = ref
                 ipo.save(update_fields=["registrar_ref", "updated_at"])

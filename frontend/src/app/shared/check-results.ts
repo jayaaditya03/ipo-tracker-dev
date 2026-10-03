@@ -37,6 +37,7 @@ const TONES: Record<CheckOutcome, string> = {
                 <td class="num">{{ r.outcome === 'allotted' ? r.shares_allotted + ' / ' + r.shares_applied : '—' }}</td>
                 <td class="muted">
                   {{ r.message }}
+                  @if (r.kept === false) { <span>Not saved to your applications.</span> }
                   @if ((r.outcome === 'unsupported' || r.outcome === 'error') && r.status_check_url) {
                     <a [href]="r.status_check_url" target="_blank" rel="noopener">{{ r.registrar }} ↗</a>
                   }

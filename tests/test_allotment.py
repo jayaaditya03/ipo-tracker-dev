@@ -211,3 +211,50 @@ def test_check_endpoint_only_touches_own_applications(client, user, other_user, 
     assert res.status_code == 200
     assert [r["application_id"] for r in res.data["results"]] == [mine.id]
     assert res.data["summary"] == {"allotted": 1}
+
+
+@pytest.mark.django_db
+class TestCheckPans:
+    """Checking any issue — including listed ones — without leaving fake applications behind."""
+
+    @pytest.fixture(autouse=True)
+    def _fake(self, monkeypatch, fake_registrar):
+        monkeypatch.setitem(ADAPTERS, "fake", FakeAdapter)
+        monkeypatch.setattr("ipos.allotment.service.time.sleep", lambda s: None)
+        self.ipo = IPOFactory(name="Fake Issue Limited", registrar=fake_registrar,
+                              status="LISTED", lot_size=150)
+
+    def test_keeps_confirmed_drops_unknown(self, client, user):
+        got = make_pan(user, "ABCDE1234F", "Self")
+        missed = make_pan(user, "PQRST6789Z", "Mother")
+        never = make_pan(user, "LMNOP4321Q", "Father")
+        FakeAdapter.answers = {
+            "ABCDE1234F": CheckResult(Outcome.ALLOTTED, 300, 150),
+            "PQRST6789Z": CheckResult(Outcome.NOT_ALLOTTED, 150, 0),
+            "LMNOP4321Q": CheckResult(Outcome.NOT_FOUND),
+        }
+        res = client.post("/api/applications/check_pans/",
+                          {"ipo_id": self.ipo.id, "pan_ids": [got.id, missed.id, never.id]}, format="json")
+        assert res.status_code == 200, res.data
+        apps = {a.pan_id: a for a in Application.objects.filter(ipo=self.ipo)}
+        assert set(apps) == {got.id, missed.id}                     # Father's record removed
+        assert apps[got.id].status == Application.Status.PARTIAL
+        assert apps[got.id].lots == 2                               # corrected from 300 shares applied
+        assert apps[missed.id].status == Application.Status.REJECTED
+        assert {r["pan_label"]: r["kept"] for r in res.data["results"]} == \
+            {"Self": True, "Mother": True, "Father": False}
+
+    def test_never_deletes_an_existing_application(self, client, user):
+        pan = make_pan(user)
+        app = Application.objects.create(owner=user, ipo=self.ipo, pan=pan, bid_price=100,
+                                         status=Application.Status.APPLIED)
+        FakeAdapter.answers = {"ABCDE1234F": CheckResult(Outcome.NOT_FOUND)}
+        client.post("/api/applications/check_pans/", {"ipo_id": self.ipo.id, "pan_ids": [pan.id]}, format="json")
+        assert Application.objects.filter(id=app.id).exists()
+
+    def test_rejects_other_users_pan(self, client, other_user):
+        theirs = make_pan(other_user)
+        res = client.post("/api/applications/check_pans/",
+                          {"ipo_id": self.ipo.id, "pan_ids": [theirs.id]}, format="json")
+        assert res.status_code == 400
+        assert not Application.objects.exists()

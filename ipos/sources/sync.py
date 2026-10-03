@@ -45,7 +45,7 @@ def add_working_days(start: date, days: int) -> date:
     return d
 
 
-def sync_from_nse(client: NSEClient | None = None, *, past_days: int = 45,
+def sync_from_nse(client: NSEClient | None = None, *, past_days: int = 90,
                   today: date | None = None, detail_pause: float = 0.5) -> SyncReport:
     client = client or NSEClient()
     today = today or timezone.localdate()

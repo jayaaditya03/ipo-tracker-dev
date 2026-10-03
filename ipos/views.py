@@ -15,11 +15,13 @@ from rest_framework.views import APIView
 
 from accounts.permissions import IsOwner
 
+from .allotment.base import Outcome
 from .allotment.service import CHECKABLE, check_applications
 from .models import IPO, Application, Registrar, StatusEvent
 from .serializers import (
     ApplicationSerializer,
     BulkApplySerializer,
+    CheckPansSerializer,
     IPODetailSerializer,
     IPOListSerializer,
     RegistrarSerializer,
@@ -211,6 +213,61 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         rows = check_applications(qs.order_by("ipo_id", "id")[:CHECK_LIMIT])
         summary = {}
         for r in rows:
+            summary[r["outcome"]] = summary.get(r["outcome"], 0) + 1
+        return Response({"results": rows, "summary": summary})
+
+    @action(detail=False, methods=["post"])
+    def check_pans(self, request):
+        """
+        POST /api/applications/check_pans/
+        Body: {"ipo_id": 12, "pan_ids": [1, 2, 3]}
+
+        "Which of these PANs got this issue?" — for any issue, including
+        ones that closed or listed before you started using the app.
+
+        PANs with no application yet get one recorded, then every PAN is
+        checked. A new record is kept only when the registrar confirms the
+        PAN applied (allotted or not); otherwise it is removed again, so a
+        check never leaves a fake application in your history.
+        """
+        serializer = CheckPansSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        ipo = serializer.validated_data["ipo"]
+        pans = serializer.validated_data["pans"][:CHECK_LIMIT]
+        if not ipo.cutoff_price:
+            return Response({"detail": "This issue has no price yet, so there is nothing to check."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        existing = {a.pan_id: a for a in self.get_queryset().filter(ipo=ipo, pan__in=pans)}
+        # SME lots usually exceed the ₹2 lakh retail cap; the category only
+        # needs to be plausible, the registrar's answer is what matters.
+        category = (Application.Category.RETAIL if (ipo.lot_amount or 0) <= Decimal("200000")
+                    else Application.Category.SHNI)
+        created_ids = set()
+        for pan in pans:
+            if pan.id in existing:
+                continue
+            app = Application.objects.create(
+                owner=request.user, ipo=ipo, pan=pan, category=category, lots=1,
+                bid_price=ipo.cutoff_price, status=Application.Status.APPLIED,
+            )
+            StatusEvent.objects.create(application=app, to_status=app.status,
+                                       note="Recorded for an allotment check.")
+            existing[pan.id] = app
+            created_ids.add(app.id)
+
+        apps = (self.get_queryset().filter(id__in=[a.id for a in existing.values()])
+                .exclude(status=Application.Status.DRAFT).order_by("pan__label"))
+        rows = check_applications(apps)
+
+        # Keep a new record only once the registrar has confirmed the PAN applied.
+        confirmed = {Outcome.ALLOTTED, Outcome.NOT_ALLOTTED}
+        drop = [r["application_id"] for r in rows
+                if r["application_id"] in created_ids and r["outcome"] not in confirmed]
+        Application.objects.filter(id__in=drop).delete()
+        summary = {}
+        for r in rows:
+            r["kept"] = r["application_id"] not in drop
             summary[r["outcome"]] = summary.get(r["outcome"], 0) + 1
         return Response({"results": rows, "summary": summary})
 

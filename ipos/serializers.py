@@ -153,6 +153,21 @@ class ApplicationSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class CheckPansSerializer(serializers.Serializer):
+    """Input for POST /api/applications/check_pans/ — ask about any issue, past or present."""
+
+    ipo_id = serializers.PrimaryKeyRelatedField(source="ipo", queryset=IPO.objects.all())
+    pan_ids = serializers.PrimaryKeyRelatedField(
+        source="pans", queryset=PanProfile.objects.none(), many=True, allow_empty=False,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            self.fields["pan_ids"].child_relation.queryset = PanProfile.objects.filter(owner=request.user)
+
+
 class BulkApplySerializer(serializers.Serializer):
     """
     Input for POST /api/applications/bulk/ — apply to one IPO across

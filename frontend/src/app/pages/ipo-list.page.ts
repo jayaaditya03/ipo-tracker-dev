@@ -50,7 +50,7 @@ const STATUSES = ['', 'OPEN', 'UPCOMING', 'CLOSED', 'ALLOTTED', 'LISTED'] as con
               <td class="num">{{ i.lot_size ?? '—' }}</td>
               <td class="num">{{ i.lot_amount | inr }}</td>
               <td class="num" [class.pos]="+(i.gmp ?? 0) > 0" [class.neg]="+(i.gmp ?? 0) < 0">{{ i.gmp | inr }}</td>
-              <td>@if (i.status === 'OPEN') { <a [routerLink]="['/ipos', i.id]">Apply</a> }</td>
+              <td>@if (i.status === 'OPEN' || i.status === 'UPCOMING') { <a [routerLink]="['/ipos', i.id]">Apply</a> } @else if (i.status !== 'WITHDRAWN') { <a [routerLink]="['/ipos', i.id]">Check</a> }</td>
             </tr>
           } @empty {
             <tr><td colspan="9" class="empty">{{ loading() ? 'Loading…' : 'No issues match.' }}</td></tr>

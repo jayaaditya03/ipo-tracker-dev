@@ -42,7 +42,7 @@ class Registrar(models.Model):
 
 class IPO(models.Model):
     """
-    A public issue. Maintained centrally (admin or a seed command), read by
+    A public issue. Maintained centrally (synced from NSE, or edited in the admin), read by
     every user.
     """
 
