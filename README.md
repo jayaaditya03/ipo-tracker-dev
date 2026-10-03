@@ -18,7 +18,7 @@ Track Indian IPO applications across every PAN in a family: apply to an issue wi
 
 ## Setup
 
-Prerequisites: Python 3.12+, PostgreSQL, Node 20.19+ (or 22.12+).
+Prerequisites: Python 3.12+, PostgreSQL, Node 24 (its bundled npm 11 is needed for `npm ci` with this lockfile).
 
 ```bash
 # 1. Database
