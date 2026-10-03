@@ -117,3 +117,16 @@ def test_dashboard_summary(client, user, ipo):
     assert data["hit_rate"] == 50.0
     assert data["invested"] == Decimal("15000")
     assert data["realised_gain"] == Decimal("3000")
+
+
+def test_applications_filter_by_status_group(client, user, ipo):
+    a = make_pan(user, "ABCDE1234F", "Self")
+    b = make_pan(user, "PQRST6789Z", "Father")
+    c = make_pan(user, "LMNOP4321Q", "Mother")
+    Application.objects.create(owner=user, ipo=ipo, pan=a, bid_price=100, status=Application.Status.ALLOTTED)
+    Application.objects.create(owner=user, ipo=ipo, pan=b, bid_price=100, status=Application.Status.PARTIAL)
+    Application.objects.create(owner=user, ipo=ipo, pan=c, bid_price=100, status=Application.Status.REJECTED)
+    res = client.get("/api/applications/", {"status__in": "ALLOTTED,PARTIAL"})
+    assert {r["pan_label"] for r in res.data["results"]} == {"Self", "Father"}
+    res = client.get("/api/applications/", {"pan": c.id})
+    assert [r["pan_label"] for r in res.data["results"]] == ["Mother"]

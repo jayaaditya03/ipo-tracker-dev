@@ -150,6 +150,11 @@ SIMPLE_JWT = {
 
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
 
+if DEBUG:
+    # In development the frontend may run on any local port (ng serve picks
+    # another one when 4200 is taken). Production only trusts the list above.
+    CORS_ALLOWED_ORIGIN_REGEXES = [r"^http://(localhost|127\.0\.0\.1):\d+$"]
+
 
 # ----------------------------------------------------------- i18n / tz
 

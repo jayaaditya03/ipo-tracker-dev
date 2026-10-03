@@ -95,7 +95,9 @@ class IPOViewSet(viewsets.ReadOnlyModelViewSet):
 class ApplicationViewSet(viewsets.ModelViewSet):
     serializer_class = ApplicationSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwner]
-    filterset_fields = ["status", "category", "ipo", "pan", "ipo__board"]
+    # status__in lets the UI group results, e.g. ?status__in=ALLOTTED,PARTIAL
+    filterset_fields = {"status": ["exact", "in"], "category": ["exact"], "ipo": ["exact"],
+                        "pan": ["exact"], "ipo__board": ["exact"]}
     search_fields = ["ipo__name", "pan__label", "application_number"]
     ordering_fields = ["created_at", "ipo__allotment_date", "lots"]
     ordering = ["-created_at"]
