@@ -9,7 +9,7 @@ Track Indian IPO applications across every PAN in a family: apply to an issue wi
 
 - Email/password accounts with JWT access and refresh tokens.
 - PANs are **encrypted at rest** (Fernet), stored with a keyed HMAC for uniqueness checks, and returned only in masked form (`XXXXX1234F`).
-- A shared IPO catalogue, kept up to date in Django admin or with the seed command.
+- **Real IPO data from NSE:** current, upcoming and recently closed mainboard and SME issues, with price band, lot size and registrar. NSE does not publish allotment and listing dates, so they are estimated from the SEBI T+3 timeline and marked "est." in the UI.
 - **Bulk apply:** apply to one IPO with several PANs in one request. A PAN that already has an application for that IPO is skipped, and the rest still go through.
 - SEBI rules are enforced: one application per PAN per issue (a database constraint) and the ₹2 lakh retail cap.
 - Status changes go through one method that writes an append-only audit log, shown as the application's history.
@@ -30,7 +30,7 @@ python -m venv .venv
 pip install -r requirements.txt
 cp .env.example .env              # then set FIELD_ENCRYPTION_KEY (command is in the file)
 python manage.py migrate
-python manage.py seed_ipos        # registrars + sample IPOs
+python manage.py sync_ipos         # real IPOs from NSE (first run takes a few minutes)
 python manage.py createsuperuser  # for /admin
 python manage.py runserver        # http://localhost:8000
 
@@ -46,8 +46,9 @@ npx ng serve                      # http://localhost:4200
 
 | Command | Purpose |
 | --- | --- |
+| `python manage.py sync_ipos` | Pulls current, upcoming and recent IPOs from NSE. Run it daily. `--past-days N` reaches further back (default 45). |
 | `python manage.py refresh_ipo_status` | Updates each IPO's status (Open, Closed, Allotment out, Listed) from today's date. Run it daily. |
-| `python manage.py seed_ipos --flush` | Wipes the IPO catalogue and reseeds it. |
+| `python manage.py seed_ipos` | Loads 6 made-up demo issues. Use it for offline demos only. |
 | `pytest` | Runs the backend test suite. |
 | `ruff check .` | Lints the backend. |
 | `cd frontend && npx ng build` | Builds the frontend for production. |

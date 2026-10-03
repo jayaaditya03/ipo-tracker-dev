@@ -24,6 +24,8 @@ from .serializers import (
     RegistrarSerializer,
     StatusEventSerializer,
 )
+from .sources.nse import NSEError
+from .sources.sync import sync_from_nse
 
 MONEY = DecimalField(max_digits=16, decimal_places=2)
 
@@ -71,6 +73,16 @@ class IPOViewSet(viewsets.ReadOnlyModelViewSet):
         today = timezone.localdate()
         qs = self.get_queryset().filter(open_date__lte=today, close_date__gte=today)
         return Response(self.get_serializer(qs, many=True).data)
+
+    @action(detail=False, methods=["post"], permission_classes=[permissions.IsAdminUser])
+    def sync(self, request):
+        """POST /api/ipos/sync/ — staff only. Pulls the latest issues from NSE."""
+        try:
+            r = sync_from_nse()
+        except NSEError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        return Response({"created": len(r.created), "updated": len(r.updated),
+                         "unchanged": r.unchanged, "errors": r.errors})
 
 
 class ApplicationViewSet(viewsets.ModelViewSet):

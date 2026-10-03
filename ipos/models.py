@@ -101,6 +101,22 @@ class IPO(models.Model):
         help_text="Unofficial, indicative only.",
     )
 
+    class Source(models.TextChoices):
+        MANUAL = "MANUAL", "Entered by hand"
+        NSE = "NSE", "Synced from NSE"
+
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.MANUAL)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    dates_estimated = models.BooleanField(
+        default=False,
+        help_text="Allotment/listing dates were estimated from the SEBI T+3 timeline, "
+                  "not published by the exchange.",
+    )
+    registrar_ref = models.CharField(
+        max_length=80, blank=True,
+        help_text="This issue's id on the registrar's own status page. Filled in automatically.",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -117,6 +133,13 @@ class IPO(models.Model):
             models.CheckConstraint(
                 condition=models.Q(close_date__gte=models.F("open_date")),
                 name="ipo_closes_after_it_opens",
+            ),
+            # The sync keys on symbol, so it must be unique — but hand-entered
+            # issues may not have one yet, hence the condition.
+            models.UniqueConstraint(
+                fields=["symbol"],
+                condition=~models.Q(symbol=""),
+                name="uniq_ipo_symbol_when_set",
             ),
         ]
 

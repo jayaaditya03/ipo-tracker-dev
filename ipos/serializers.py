@@ -36,7 +36,7 @@ class IPOListSerializer(serializers.ModelSerializer):
             "id", "name", "symbol", "board", "status", "registrar",
             "price_band_low", "price_band_high", "cutoff_price",
             "lot_size", "lot_amount", "gmp",
-            "open_date", "close_date", "allotment_date", "listing_date",
+            "open_date", "close_date", "allotment_date", "listing_date", "dates_estimated",
         ]
 
 

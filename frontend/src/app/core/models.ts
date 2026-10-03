@@ -52,6 +52,7 @@ export interface Ipo {
   close_date: string | null;
   allotment_date: string | null;
   listing_date: string | null;
+  dates_estimated: boolean;
   // detail only
   issue_size_cr?: string | null;
   refund_date?: string | null;

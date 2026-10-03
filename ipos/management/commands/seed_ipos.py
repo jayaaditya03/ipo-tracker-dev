@@ -1,7 +1,7 @@
 """
 Seed registrars and a set of IPOs so the app has data on first run.
 
-    python manage.py seed_ipos
+    python manage.py seed_ipos           # demo data — use sync_ipos for real issues
     python manage.py seed_ipos --flush    # wipe IPOs and registrars first
 
 Why this exists: a reviewer who clones your repo should see a working app,
@@ -19,25 +19,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from ipos.models import IPO, Registrar
-
-REGISTRARS = [
-    ("MUFG Intime India", "mufg-intime",
-     "https://linkintime.co.in/initial_offer/public-issues.html"),
-    ("KFin Technologies", "kfintech",
-     "https://kosmic.kfintech.com/ipostatus/"),
-    ("Bigshare Services", "bigshare",
-     "https://ipo.bigshareonline.com/ipo_status.html"),
-    ("Maashitla Securities", "maashitla",
-     "https://maashitla.com/allotment-status/public-issues"),
-    ("Cameo Corporate Services", "cameo",
-     "https://ipo.cameoindia.com/"),
-    ("Skyline Financial Services", "skyline",
-     "https://www.skylinerta.com/ipo.php"),
-    ("Purva Sharegistry", "purva",
-     "https://www.purvashare.com/investor-service/ipo-query"),
-    ("Integrated Registry", "integrated",
-     "https://ipo.integratedindia.in/"),
-]
+from ipos.sources.registrars import KNOWN_REGISTRARS as REGISTRARS
 
 # Illustrative issues for a working demo. Replace with real ones you have
 # applied to — the point is that the app opens with something in it.

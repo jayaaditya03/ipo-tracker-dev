@@ -31,9 +31,9 @@ const RETAIL_LIMIT = 200000;
           <div><dt>GMP</dt><dd>{{ i.gmp | inr }}</dd></div>
           <div><dt>Open</dt><dd>{{ (i.open_date | date: 'd MMM y') ?? '—' }}</dd></div>
           <div><dt>Close</dt><dd>{{ (i.close_date | date: 'd MMM y') ?? '—' }}</dd></div>
-          <div><dt>Allotment</dt><dd>{{ (i.allotment_date | date: 'd MMM y') ?? '—' }}</dd></div>
-          <div><dt>Refund</dt><dd>{{ (i.refund_date | date: 'd MMM y') ?? '—' }}</dd></div>
-          <div><dt>Listing</dt><dd>{{ (i.listing_date | date: 'd MMM y') ?? '—' }}</dd></div>
+          <div><dt>Allotment @if (i.dates_estimated) { <span title="Estimated from the SEBI T+3 timeline">(est.)</span> }</dt><dd>{{ (i.allotment_date | date: 'd MMM y') ?? '—' }}</dd></div>
+          <div><dt>Refund @if (i.dates_estimated) { <span title="Estimated from the SEBI T+3 timeline">(est.)</span> }</dt><dd>{{ (i.refund_date | date: 'd MMM y') ?? '—' }}</dd></div>
+          <div><dt>Listing @if (i.dates_estimated) { <span title="Estimated from the SEBI T+3 timeline">(est.)</span> }</dt><dd>{{ (i.listing_date | date: 'd MMM y') ?? '—' }}</dd></div>
           @if (i.listing_price) {
             <div><dt>Listing price</dt><dd>{{ i.listing_price | inr }}
               <span [class.pos]="+i.listing_gain_pct! > 0" [class.neg]="+i.listing_gain_pct! < 0">({{ i.listing_gain_pct | number: '1.1-1' }}%)</span></dd></div>

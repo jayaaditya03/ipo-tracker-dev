@@ -47,7 +47,19 @@ class IPOAdmin(admin.ModelAdmin):
         ("Listing", {"fields": ("listing_price",)}),
     )
 
-    actions = ["refresh_status"]
+    actions = ["refresh_status", "sync_from_nse"]
+
+    @admin.action(description="Sync all IPOs from NSE now (selection is ignored)")
+    def sync_from_nse(self, request, queryset):
+        from .sources.nse import NSEError
+        from .sources.sync import sync_from_nse
+        try:
+            r = sync_from_nse()
+        except NSEError as exc:
+            self.message_user(request, f"NSE sync failed: {exc}", level="error")
+            return
+        self.message_user(request, f"NSE sync: {len(r.created)} created, {len(r.updated)} updated, "
+                                   f"{r.unchanged} unchanged, {len(r.errors)} errors.")
 
     @admin.action(description="Recalculate status from today's date")
     def refresh_status(self, request, queryset):
