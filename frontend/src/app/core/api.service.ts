@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../environments/environment';
 import {
-  Application, AppStatus, BulkApplyResult, Category, DashboardSummary,
+  Application, AppStatus, BulkApplyResult, Category, CheckResponse, DashboardSummary,
   Ipo, Page, Pan, StatusEvent,
 } from './models';
 
@@ -66,6 +66,10 @@ export class ApiService {
   }
   deleteApplication(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/applications/${id}/`);
+  }
+  /** Ask the registrars. No body = every pending application whose allotment date has arrived. */
+  checkAllotments(body: { ipo_id?: number; application_ids?: number[] } = {}): Observable<CheckResponse> {
+    return this.http.post<CheckResponse>(`${this.base}/applications/check/`, body);
   }
   events(id: number): Observable<StatusEvent[]> {
     return this.http.get<StatusEvent[]>(`${this.base}/applications/${id}/events/`);

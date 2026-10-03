@@ -143,3 +143,25 @@ export interface DashboardSummary {
   hit_rate: number;
   by_pan: { pan__id: number; pan__label: string; applications: number; allotted: number }[];
 }
+
+export type CheckOutcome = 'allotted' | 'not_allotted' | 'not_found' | 'not_published' | 'unsupported' | 'error';
+
+export interface CheckRow {
+  application_id: number;
+  ipo_id: number;
+  ipo_name: string;
+  pan_label: string;
+  pan_masked: string;
+  registrar: string;
+  status_check_url: string;
+  outcome: CheckOutcome;
+  status: AppStatus;
+  shares_applied?: number | null;
+  shares_allotted?: number | null;
+  message: string;
+}
+
+export interface CheckResponse {
+  results: CheckRow[];
+  summary: Partial<Record<CheckOutcome, number>>;
+}

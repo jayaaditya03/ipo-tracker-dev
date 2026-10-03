@@ -4,13 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { ApiService, errorText } from '../core/api.service';
-import { Application, BulkApplyResult, CATEGORY_LABELS, Category, Ipo, Pan } from '../core/models';
+import { Application, BulkApplyResult, CATEGORY_LABELS, Category, CheckResponse, Ipo, Pan } from '../core/models';
+import { CheckResults } from '../shared/check-results';
 import { InrPipe, TonePipe } from '../shared/format';
 
 const RETAIL_LIMIT = 200000;
 
 @Component({
-  imports: [FormsModule, RouterLink, DatePipe, DecimalPipe, TitleCasePipe, InrPipe, TonePipe],
+  imports: [FormsModule, RouterLink, DatePipe, DecimalPipe, TitleCasePipe, InrPipe, TonePipe, CheckResults],
   template: `
     <p><a routerLink="/ipos">← All IPOs</a></p>
     @if (error()) { <div class="error">{{ error() }}</div> }
@@ -63,7 +64,15 @@ const RETAIL_LIMIT = 200000;
               }
             </tbody>
           </table></div>
-          <p><a routerLink="/applications" [queryParams]="{ ipo: i.id }">Manage on the Applications page →</a></p>
+          <div class="inline">
+            @if (pending()) {
+              <button class="primary" (click)="checkAllotment()" [disabled]="checking()">
+                {{ checking() ? 'Asking ' + i.registrar.name + '…' : 'Check allotment for ' + pending() + ' PAN(s)' }}
+              </button>
+            }
+            <a routerLink="/applications" [queryParams]="{ ipo: i.id }">Manage on the Applications page →</a>
+          </div>
+          <app-check-results [data]="checkResult()" />
         </div>
       }
 
@@ -121,6 +130,9 @@ export class IpoDetailPage implements OnInit {
   result = signal<BulkApplyResult | null>(null);
   busy = signal(false);
   error = signal('');
+  checking = signal(false);
+  checkResult = signal<CheckResponse | null>(null);
+  pending = computed(() => this.mine().filter((a) => a.status === 'APPLIED').length);
 
   category: Category = 'RETAIL';
   lots = 1;
@@ -148,6 +160,15 @@ export class IpoDetailPage implements OnInit {
     this.api.ipo(id).subscribe({ next: (i) => this.ipo.set(i), error: (e) => this.error.set(errorText(e)) });
     this.api.pans({ is_active: true }).subscribe((p) => this.pans.set(p.results));
     this.loadMine();
+  }
+
+  checkAllotment() {
+    this.checking.set(true);
+    this.error.set('');
+    this.api.checkAllotments({ ipo_id: Number(this.id()) }).subscribe({
+      next: (r) => { this.checkResult.set(r); this.checking.set(false); this.loadMine(); },
+      error: (e) => { this.error.set(errorText(e)); this.checking.set(false); },
+    });
   }
 
   loadMine() {

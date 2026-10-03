@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { ApiService, errorText } from '../core/api.service';
-import { APP_STATUS_LABELS, AppStatus, Application, Page, StatusEvent } from '../core/models';
+import { APP_STATUS_LABELS, AppStatus, Application, CheckResponse, Page, StatusEvent } from '../core/models';
+import { CheckResults } from '../shared/check-results';
 import { InrPipe, TonePipe } from '../shared/format';
 
 @Component({
-  imports: [FormsModule, RouterLink, DatePipe, InrPipe, TonePipe],
+  imports: [FormsModule, RouterLink, DatePipe, InrPipe, TonePipe, CheckResults],
   template: `
     <div class="page-head">
       <h1>Applications</h1>
@@ -20,10 +21,19 @@ import { InrPipe, TonePipe } from '../shared/format';
             @for (s of statuses; track s) { <option [value]="s">{{ labels[s] }}</option> }
           </select>
         </label>
+        <button class="primary" (click)="checkAll()" [disabled]="checking()">
+          {{ checking() ? 'Checking with registrars…' : 'Check pending allotments' }}
+        </button>
       </div>
     </div>
     @if (ipo()) { <p class="muted">Filtered to one issue. <a routerLink="/applications">Show all</a></p> }
     @if (error()) { <div class="error">{{ error() }}</div> }
+    @if (checkResult()) {
+      <div class="card">
+        <h2>Allotment check</h2>
+        <app-check-results [data]="checkResult()" />
+      </div>
+    }
 
     <div class="card table-wrap">
       <table>
@@ -113,6 +123,8 @@ export class ApplicationsPage {
   events = signal<StatusEvent[]>([]);
   busy = signal(false);
   error = signal('');
+  checking = signal(false);
+  checkResult = signal<CheckResponse | null>(null);
 
   newStatus: AppStatus = 'APPLIED';
   shares: number | null = null;
@@ -129,6 +141,17 @@ export class ApplicationsPage {
 
   label(s: string) {
     return this.labels[s as AppStatus] ?? s;
+  }
+
+  /** Checks this issue's PANs when filtered to one, otherwise everything pending. */
+  checkAll() {
+    this.checking.set(true);
+    this.error.set('');
+    const ipo = this.ipo();
+    this.api.checkAllotments(ipo ? { ipo_id: Number(ipo) } : {}).subscribe({
+      next: (r) => { this.checkResult.set(r); this.checking.set(false); this.load(this.pageNo); },
+      error: (e) => { this.error.set(errorText(e)); this.checking.set(false); },
+    });
   }
 
   load(n: number) {

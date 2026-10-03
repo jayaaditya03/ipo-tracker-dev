@@ -12,6 +12,7 @@ Track Indian IPO applications across every PAN in a family: apply to an issue wi
 - **Real IPO data from NSE:** current, upcoming and recently closed mainboard and SME issues, with price band, lot size and registrar. NSE does not publish allotment and listing dates, so they are estimated from the SEBI T+3 timeline and marked "est." in the UI.
 - **Bulk apply:** apply to one IPO with several PANs in one request. A PAN that already has an application for that IPO is skipped, and the rest still go through.
 - SEBI rules are enforced: one application per PAN per issue (a database constraint) and the ₹2 lakh retail cap.
+- **Automatic allotment checks across all your PANs:** one click asks the registrar for every pending PAN on an issue and records the result (allotted, partial or not allotted) in the audit log. Supported: **KFin, MUFG Intime and Bigshare**, which handle most issues. For other registrars the app links to their status page.
 - Status changes go through one method that writes an append-only audit log, shown as the application's history.
 - The dashboard's aggregate figures are computed in SQL.
 
@@ -48,6 +49,7 @@ npx ng serve                      # http://localhost:4200
 | --- | --- |
 | `python manage.py sync_ipos` | Pulls current, upcoming and recent IPOs from NSE. Run it daily. `--past-days N` reaches further back (default 45). |
 | `python manage.py refresh_ipo_status` | Updates each IPO's status (Open, Closed, Allotment out, Listed) from today's date. Run it daily. |
+| `python manage.py check_allotments` | Asks registrars about every pending application whose allotment date has arrived. Run it a few times on allotment days. |
 | `python manage.py seed_ipos` | Loads 6 made-up demo issues. Use it for offline demos only. |
 | `pytest` | Runs the backend test suite. |
 | `ruff check .` | Lints the backend. |
@@ -65,6 +67,7 @@ All endpoints are under `/api/` and need `Authorization: Bearer <access>`, excep
 | GET | `/ipos/`, `/ipos/{id}/`, `/ipos/open_now/` | IPO catalogue. Filters: `status`, `board`, `search` |
 | CRUD | `/applications/` | Your applications. Filters: `status`, `ipo`, `pan`, `search` |
 | POST | `/applications/bulk/` | `{ipo_id, pan_ids[], lots, category, mark_applied}` |
+| POST | `/applications/check/` | Optional `{ipo_id}` or `{application_ids[]}`. Checks allotment with the registrars, up to 25 PANs per call. |
 | POST | `/applications/{id}/set_status/` | `{status, shares_allotted?, note?}` |
 | GET | `/applications/{id}/events/` | Status history |
 | GET | `/dashboard/summary/` | Totals, hit rate and a per-PAN breakdown |
@@ -80,3 +83,25 @@ config/     settings (read from .env), URLs, pagination
 tests/      pytest suite
 frontend/   Angular app: core/ (API, auth, interceptor), pages/, shared/
 ```
+
+## Scheduling (Windows)
+
+Run the daily jobs with Task Scheduler, for example:
+
+```powershell
+$py  = "C:\path\to\ipo-tracker\.venv\Scripts\python.exe"
+$dir = "C:\path\to\ipo-tracker"
+schtasks /Create /TN "IPO sync"   /SC DAILY /ST 08:00 /TR "cmd /c cd /d $dir && $py manage.py sync_ipos"
+schtasks /Create /TN "IPO checks" /SC DAILY /ST 19:00 /TR "cmd /c cd /d $dir && $py manage.py check_allotments"
+```
+
+On macOS or Linux, add the same two commands to `crontab -e`.
+
+## How the data sources work
+
+Neither NSE nor the registrars publish an official API. The app calls the same endpoints their public web pages use:
+
+- **NSE** (`ipos/sources/nse.py`): needs a browser user-agent and the session cookies NSE's pages set.
+- **Registrars** (`ipos/allotment/`): one adapter per registrar.
+
+If a site changes, only its adapter breaks. The rest of the app keeps working, and the UI falls back to a link to the registrar. Requests are spaced at least a second apart per registrar, and only your own PANs are ever queried.

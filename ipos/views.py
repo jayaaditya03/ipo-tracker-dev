@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 
 from accounts.permissions import IsOwner
 
+from .allotment.service import CHECKABLE, check_applications
 from .models import IPO, Application, Registrar, StatusEvent
 from .serializers import (
     ApplicationSerializer,
@@ -28,6 +29,10 @@ from .sources.nse import NSEError
 from .sources.sync import sync_from_nse
 
 MONEY = DecimalField(max_digits=16, decimal_places=2)
+
+# Most PANs one request will check. At ~1 request/second per registrar
+# this keeps the call well under typical proxy timeouts.
+CHECK_LIMIT = 25
 
 
 class RegistrarViewSet(viewsets.ReadOnlyModelViewSet):
@@ -178,6 +183,36 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
+
+    @action(detail=False, methods=["post"])
+    def check(self, request):
+        """
+        POST /api/applications/check/
+        Body (all optional): {"ipo_id": 12} or {"application_ids": [1, 2]}
+
+        Asks each registrar for the allotment result of every matching PAN
+        and records the answers. With no body, checks every pending
+        application whose allotment date has arrived. Capped per request so
+        one call can't hammer a registrar.
+        """
+        qs = self.get_queryset().exclude(status=Application.Status.DRAFT)
+        ids = request.data.get("application_ids")
+        ipo_id = request.data.get("ipo_id")
+        if ids:
+            qs = qs.filter(id__in=ids)
+        else:
+            qs = qs.filter(status__in=CHECKABLE)
+            if ipo_id:
+                qs = qs.filter(ipo_id=ipo_id)
+            else:
+                qs = qs.filter(Q(ipo__allotment_date__isnull=True)
+                               | Q(ipo__allotment_date__lte=timezone.localdate()))
+
+        rows = check_applications(qs.order_by("ipo_id", "id")[:CHECK_LIMIT])
+        summary = {}
+        for r in rows:
+            summary[r["outcome"]] = summary.get(r["outcome"], 0) + 1
+        return Response({"results": rows, "summary": summary})
 
     @action(detail=True, methods=["post"])
     def set_status(self, request, pk=None):

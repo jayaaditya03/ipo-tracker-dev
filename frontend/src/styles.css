@@ -135,3 +135,5 @@ button:disabled { opacity: .5; cursor: default; }
 dl.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem 1.5rem; margin: 0; }
 dl.facts dt { color: var(--muted); font-size: .8rem; }
 dl.facts dd { margin: 0; font-weight: 500; }
+
+.card table + .inline, .card .table-wrap + .inline { margin-top: .75rem; }
