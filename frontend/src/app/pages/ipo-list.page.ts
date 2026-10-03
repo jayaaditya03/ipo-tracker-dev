@@ -1,17 +1,17 @@
-import { DatePipe, TitleCasePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Subject, debounceTime } from 'rxjs';
 
 import { ApiService, errorText } from '../core/api.service';
-import { Ipo } from '../core/models';
-import { InrPipe, TonePipe } from '../shared/format';
+import { IPO_STATUS_LABELS, IPO_STATUS_TONES, Ipo } from '../core/models';
+import { InrPipe } from '../shared/format';
 
 const STATUSES = ['', 'OPEN', 'UPCOMING', 'CLOSED', 'ALLOTTED', 'LISTED'] as const;
 
 @Component({
-  imports: [FormsModule, RouterLink, DatePipe, TitleCasePipe, InrPipe, TonePipe],
+  imports: [FormsModule, RouterLink, DatePipe, InrPipe],
   template: `
     <div class="page-head">
       <h1>IPOs</h1>
@@ -27,7 +27,7 @@ const STATUSES = ['', 'OPEN', 'UPCOMING', 'CLOSED', 'ALLOTTED', 'LISTED'] as con
 
     <div class="tabs">
       @for (s of statuses; track s) {
-        <button [class.on]="status === s" (click)="status = s; load()">{{ s ? (s | titlecase) : 'All' }}</button>
+        <button [class.on]="status === s" (click)="status = s; load()">{{ s ? ipoLabels[s] : 'All' }}</button>
       }
     </div>
 
@@ -43,7 +43,7 @@ const STATUSES = ['', 'OPEN', 'UPCOMING', 'CLOSED', 'ALLOTTED', 'LISTED'] as con
           @for (i of ipos(); track i.id) {
             <tr>
               <td><a [routerLink]="['/ipos', i.id]">{{ i.name }}</a><div class="muted">{{ i.registrar.name }}</div></td>
-              <td><span class="badge" [class]="i.status | tone">{{ i.status | titlecase }}</span></td>
+              <td><span class="badge" [class]="ipoTones[i.status]">{{ ipoLabels[i.status] }}</span></td>
               <td>{{ i.board === 'SME' ? 'SME' : 'Main' }}</td>
               <td>{{ i.open_date | date: 'd MMM' }} – {{ i.close_date | date: 'd MMM' }}</td>
               <td class="num">{{ i.price_band_low | inr }}–{{ i.price_band_high | inr }}</td>
@@ -64,6 +64,8 @@ export class IpoListPage {
   private api = inject(ApiService);
 
   statuses = STATUSES;
+  ipoLabels = IPO_STATUS_LABELS;
+  ipoTones = IPO_STATUS_TONES;
   status: string = '';
   board = '';
   search = '';

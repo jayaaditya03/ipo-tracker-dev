@@ -1,17 +1,17 @@
-import { DatePipe, DecimalPipe, TitleCasePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { ApiService, errorText } from '../core/api.service';
-import { Application, BulkApplyResult, CATEGORY_LABELS, Category, CheckResponse, Ipo, Pan } from '../core/models';
+import { Application, BulkApplyResult, CATEGORY_LABELS, Category, CheckResponse, IPO_STATUS_LABELS, IPO_STATUS_TONES, Ipo, Pan } from '../core/models';
 import { CheckResults } from '../shared/check-results';
 import { InrPipe, TonePipe } from '../shared/format';
 
 const RETAIL_LIMIT = 200000;
 
 @Component({
-  imports: [FormsModule, RouterLink, DatePipe, DecimalPipe, TitleCasePipe, InrPipe, TonePipe, CheckResults],
+  imports: [FormsModule, RouterLink, DatePipe, DecimalPipe, InrPipe, TonePipe, CheckResults],
   template: `
     <p><a routerLink="/ipos">← All IPOs</a></p>
     @if (error()) { <div class="error">{{ error() }}</div> }
@@ -19,7 +19,7 @@ const RETAIL_LIMIT = 200000;
     @if (ipo(); as i) {
       <div class="page-head">
         <h1>{{ i.name }} @if (i.symbol) { <span class="muted">· {{ i.symbol }}</span> }</h1>
-        <span class="badge" [class]="i.status | tone">{{ i.status | titlecase }}</span>
+        <span class="badge" [class]="ipoTones[i.status]">{{ ipoLabels[i.status] }}</span>
       </div>
 
       <div class="card">
@@ -142,6 +142,8 @@ export class IpoDetailPage implements OnInit {
 
   categories = Object.keys(CATEGORY_LABELS) as Category[];
   categoryLabels = CATEGORY_LABELS;
+  ipoLabels = IPO_STATUS_LABELS;
+  ipoTones = IPO_STATUS_TONES;
 
   ipo = signal<Ipo | null>(null);
   pans = signal<Pan[]>([]);
