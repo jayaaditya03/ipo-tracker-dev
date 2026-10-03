@@ -12,12 +12,12 @@ const LABELS: Record<CheckOutcome, string> = {
 };
 
 const TONES: Record<CheckOutcome, string> = {
-  allotted: 'good',
-  not_allotted: 'bad',
-  not_found: 'muted',
-  not_published: 'muted',
-  unsupported: 'neutral',
-  error: 'bad',
+  allotted: 'bg-light-success',
+  not_allotted: 'bg-light-danger',
+  not_found: 'bg-light-secondary',
+  not_published: 'bg-light-warning',
+  unsupported: 'bg-light-secondary',
+  error: 'bg-light-danger',
 };
 
 /** Per-PAN outcome of an allotment check. */
@@ -26,28 +26,30 @@ const TONES: Record<CheckOutcome, string> = {
   template: `
     @if (data(); as d) {
       @if (d.results.length) {
-        <div class="table-wrap"><table>
-          <thead><tr><th>IPO</th><th>Applicant</th><th>Result</th><th class="num">Allotted</th><th></th></tr></thead>
-          <tbody>
-            @for (r of d.results; track r.application_id) {
-              <tr>
-                <td>{{ r.ipo_name }}</td>
-                <td>{{ r.pan_label }} <span class="muted">{{ r.pan_masked }}</span></td>
-                <td><span class="badge" [class]="tones[r.outcome]">{{ labels[r.outcome] }}</span></td>
-                <td class="num">{{ r.outcome === 'allotted' ? r.shares_allotted + ' / ' + r.shares_applied : '—' }}</td>
-                <td class="muted">
-                  {{ r.message }}
-                  @if (r.kept === false) { <span>Not saved to your applications.</span> }
-                  @if ((r.outcome === 'unsupported' || r.outcome === 'error') && r.status_check_url) {
-                    <a [href]="r.status_check_url" target="_blank" rel="noopener">{{ r.registrar }} ↗</a>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table></div>
+        <div class="table-responsive mt-3">
+          <table class="table table-hover mb-0">
+            <thead><tr><th>IPO</th><th>Applicant</th><th>Result</th><th class="num">Allotted</th><th>Details</th></tr></thead>
+            <tbody>
+              @for (r of d.results; track r.application_id) {
+                <tr>
+                  <td>{{ r.ipo_name }}</td>
+                  <td>{{ r.pan_label }} <span class="text-muted">{{ r.pan_masked }}</span></td>
+                  <td><span class="badge" [class]="tones[r.outcome]">{{ labels[r.outcome] }}</span></td>
+                  <td class="num">{{ r.outcome === 'allotted' ? r.shares_allotted + ' / ' + r.shares_applied : '—' }}</td>
+                  <td class="text-muted text-sm text-wrap">
+                    {{ r.message }}
+                    @if (r.kept === false) { <span>Not saved to your applications.</span> }
+                    @if ((r.outcome === 'unsupported' || r.outcome === 'error') && r.status_check_url) {
+                      <a [href]="r.status_check_url" target="_blank" rel="noopener">{{ r.registrar }} ↗</a>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       } @else {
-        <p class="muted">Nothing to check — no applied, unresolved applications whose allotment date has arrived.</p>
+        <p class="text-muted mt-3 mb-0">Nothing to check — no applied, unresolved applications whose allotment date has arrived.</p>
       }
     }
   `,

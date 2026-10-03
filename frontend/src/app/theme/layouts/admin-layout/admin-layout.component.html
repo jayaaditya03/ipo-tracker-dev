@@ -1,0 +1,28 @@
+<app-navigation class="pc-sidebar" [ngClass]="{
+    'navbar-collapsed': navCollapsed,
+    'mob-open': navCollapsedMob
+  }" (NavCollapse)="closeMenu()" />
+<app-nav-bar (NavCollapsedMob)="navMobClick()" (NavCollapse)="handleNavCollapse()" />
+<div class="pc-container">
+  <div class="coded-wrapper">
+    <div class="coded-content">
+      <div class="coded-inner-content">
+        <div class="main-body">
+          <div class="page-wrapper">
+            <router-outlet />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pc-menu-overlay" (click)="closeMenu()" (keydown)="handleKeyDown($event)" tabindex="0"></div>
+</div>
+<footer class="pc-footer">
+  <div class="footer-wrapper container-fluid">
+    <div class="row">
+      <div class="col my-1">
+        <p class="m-0">IPO-PRO · IPO data from NSE, allotment results from the registrars</p>
+      </div>
+    </div>
+  </div>
+</footer>

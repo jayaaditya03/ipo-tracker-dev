@@ -1,26 +1,44 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { switchMap } from 'rxjs';
 
 import { errorText } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { AuthShell } from './auth-shell';
 
 @Component({
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, AuthShell],
   template: `
-    <div class="card">
-      <h1>Create account</h1>
-      @if (error()) { <div class="error">{{ error() }}</div> }
+    <app-auth-shell heading="Create account" altText="Already have an account?" altLink="/login">
+      @if (error()) { <div class="alert alert-danger">{{ error() }}</div> }
       <form (ngSubmit)="submit()">
-        <label>Full name <input name="full_name" [(ngModel)]="form.full_name" autocomplete="name" /></label>
-        <label>Email <input type="email" name="email" [(ngModel)]="form.email" required autocomplete="email" /></label>
-        <label>Password <input type="password" name="password" [(ngModel)]="form.password" required minlength="8" autocomplete="new-password" /></label>
-        <label>Confirm password <input type="password" name="password_confirm" [(ngModel)]="form.password_confirm" required autocomplete="new-password" /></label>
-        <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Creating…' : 'Create account' }}</button>
+        <div class="form-group mb-3">
+          <label class="form-label" for="full_name">Full name</label>
+          <input id="full_name" name="full_name" class="form-control" [(ngModel)]="form.full_name" autocomplete="name" />
+        </div>
+        <div class="form-group mb-3">
+          <label class="form-label" for="email">Email address</label>
+          <input id="email" type="email" name="email" class="form-control" [(ngModel)]="form.email" required autocomplete="email" />
+        </div>
+        <div class="row">
+          <div class="col-sm-6 form-group mb-3">
+            <label class="form-label" for="password">Password</label>
+            <input id="password" type="password" name="password" class="form-control" [(ngModel)]="form.password"
+              required minlength="8" autocomplete="new-password" />
+          </div>
+          <div class="col-sm-6 form-group mb-3">
+            <label class="form-label" for="password_confirm">Confirm password</label>
+            <input id="password_confirm" type="password" name="password_confirm" class="form-control"
+              [(ngModel)]="form.password_confirm" required autocomplete="new-password" />
+          </div>
+        </div>
+        <p class="text-muted text-sm mb-0">At least 8 characters, not entirely numbers.</p>
+        <div class="d-grid mt-4">
+          <button class="btn btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Creating…' : 'Create account' }}</button>
+        </div>
       </form>
-      <p class="muted">Already registered? <a routerLink="/login">Sign in</a></p>
-    </div>
+    </app-auth-shell>
   `,
 })
 export class RegisterPage {

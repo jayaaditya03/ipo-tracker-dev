@@ -87,8 +87,13 @@ export class ApiService {
 
 /** Flattens a DRF error body into one readable line. */
 export function errorText(err: unknown): string {
+  // Status 0: the request never got a response — server down, or blocked
+  // by CORS. The body is then a browser ProgressEvent, not a DRF error.
+  if ((err as { status?: number })?.status === 0) {
+    return "Can't reach the IPO-PRO server. Check that Django is running and allows this site's address.";
+  }
   const body = (err as { error?: unknown })?.error;
-  if (!body) return 'Something went wrong. Is the API running?';
+  if (!body || typeof body !== 'object' && typeof body !== 'string') return 'Something went wrong. Is the API running?';
   if (typeof body === 'string') return body;
   const parts: string[] = [];
   for (const [field, val] of Object.entries(body as Record<string, unknown>)) {

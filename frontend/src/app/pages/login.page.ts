@@ -1,23 +1,31 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 
 import { errorText } from '../core/api.service';
 import { AuthService } from '../core/auth.service';
+import { AuthShell } from './auth-shell';
 
 @Component({
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, AuthShell],
   template: `
-    <div class="card">
-      <h1>Sign in</h1>
-      @if (error()) { <div class="error">{{ error() }}</div> }
+    <app-auth-shell heading="Sign in" altText="Don't have an account?" altLink="/register">
+      @if (error()) { <div class="alert alert-danger">{{ error() }}</div> }
       <form (ngSubmit)="submit()">
-        <label>Email <input type="email" name="email" [(ngModel)]="email" required autocomplete="email" /></label>
-        <label>Password <input type="password" name="password" [(ngModel)]="password" required autocomplete="current-password" /></label>
-        <button class="primary" type="submit" [disabled]="busy()">{{ busy() ? 'Signing in…' : 'Sign in' }}</button>
+        <div class="form-group mb-3">
+          <label class="form-label" for="email">Email address</label>
+          <input id="email" type="email" name="email" class="form-control" [(ngModel)]="email" required autocomplete="email" />
+        </div>
+        <div class="form-group mb-3">
+          <label class="form-label" for="password">Password</label>
+          <input id="password" type="password" name="password" class="form-control" [(ngModel)]="password" required
+            autocomplete="current-password" />
+        </div>
+        <div class="d-grid mt-4">
+          <button class="btn btn-primary" type="submit" [disabled]="busy()">{{ busy() ? 'Signing in…' : 'Sign in' }}</button>
+        </div>
       </form>
-      <p class="muted">No account? <a routerLink="/register">Create one</a></p>
-    </div>
+    </app-auth-shell>
   `,
 })
 export class LoginPage {

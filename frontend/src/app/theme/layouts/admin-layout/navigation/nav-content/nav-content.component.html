@@ -1,0 +1,11 @@
+<ng-scrollbar style="height: calc(100vh - 74px)" visibility="hover" id="nav-ps-mantis">
+  <div class="navbar-content">
+    <ul class="nav coded-inner-navbar" (click)="fireOutClick()" (mouseleave)="navMob()">
+      @for (item of navigations; track item.id) {
+        @if (item.type === 'group') {
+          <app-nav-group [item]="item" />
+        }
+      }
+    </ul>
+  </div>
+</ng-scrollbar>

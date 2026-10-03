@@ -33,7 +33,26 @@ export interface Registrar {
 }
 
 export type IpoStatus = 'UPCOMING' | 'OPEN' | 'CLOSED' | 'ALLOTTED' | 'LISTED' | 'WITHDRAWN';
-/** What stage an issue is at. Distinct from an application's result. */export const IPO_STATUS_LABELS: Record<IpoStatus, string> = {  UPCOMING: 'Upcoming',  OPEN: 'Open for bidding',  CLOSED: 'Bidding closed',  ALLOTTED: 'Allotment out',  LISTED: 'Listed',  WITHDRAWN: 'Withdrawn',};export const IPO_STATUS_TONES: Record<IpoStatus, string> = {  UPCOMING: 'muted', OPEN: 'info', CLOSED: 'neutral', ALLOTTED: 'neutral', LISTED: 'neutral', WITHDRAWN: 'bad',};
+
+/** What stage an issue is at. Distinct from an application's result. */
+export const IPO_STATUS_LABELS: Record<IpoStatus, string> = {
+  UPCOMING: 'Upcoming',
+  OPEN: 'Open for bidding',
+  CLOSED: 'Bidding closed',
+  ALLOTTED: 'Allotment out',
+  LISTED: 'Listed',
+  WITHDRAWN: 'Withdrawn',
+};
+
+export const IPO_STATUS_TONES: Record<IpoStatus, string> = {
+  UPCOMING: 'bg-light-warning',
+  OPEN: 'bg-light-primary',
+  CLOSED: 'bg-light-secondary',
+  ALLOTTED: 'bg-light-secondary',
+  LISTED: 'bg-light-secondary',
+  WITHDRAWN: 'bg-light-danger',
+};
+
 export type Board = 'MAINBOARD' | 'SME';
 
 export interface Ipo {

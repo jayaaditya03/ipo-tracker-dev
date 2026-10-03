@@ -3,32 +3,11 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "frontend": {
+    "ipo-pro": {
       "projectType": "application",
       "schematics": {
-        "@schematics/angular:class": {
-          "skipTests": true
-        },
         "@schematics/angular:component": {
-          "skipTests": true
-        },
-        "@schematics/angular:directive": {
-          "skipTests": true
-        },
-        "@schematics/angular:guard": {
-          "skipTests": true
-        },
-        "@schematics/angular:interceptor": {
-          "skipTests": true
-        },
-        "@schematics/angular:pipe": {
-          "skipTests": true
-        },
-        "@schematics/angular:resolver": {
-          "skipTests": true
-        },
-        "@schematics/angular:service": {
-          "skipTests": true
+          "style": "scss"
         }
       },
       "root": "",
@@ -38,40 +17,62 @@
         "build": {
           "builder": "@angular/build:application",
           "options": {
+            "outputPath": {
+              "base": "dist",
+              "browser": ""
+            },
+            "index": "src/index.html",
             "browser": "src/main.ts",
-            "polyfills": [
-              "zone.js"
-            ],
+            "polyfills": [],
             "tsConfig": "tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
             "assets": [
-              {
-                "glob": "**/*",
-                "input": "public"
-              }
+              
+              "src/assets"
             ],
             "styles": [
-              "src/styles.css"
-            ]
+              "src/styles.scss"
+            ],
+            "scripts": [],
+            "stylePreprocessorOptions": {
+              "includePaths": [
+                "src",
+                "node_modules"
+              ],
+              "sass": {
+                "silenceDeprecations": [
+                  "import",
+                  "global-builtin",
+                  "color-functions",
+                  "if-function"
+                ]
+              }
+            }
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "1mb",
+                  "maximumError": "1mb"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "8kB"
+                  "maximumWarning": "2kb",
+                  "maximumError": "4kb"
+                }
+              ],
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
                 }
               ],
               "outputHashing": "all"
             },
             "development": {
               "optimization": false,
-              "extractLicenses": false,
               "sourceMap": true
             }
           },
@@ -81,37 +82,36 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "frontend:build:production"
+              "buildTarget": "ipo-pro:build:production"
             },
             "development": {
-              "buildTarget": "frontend:build:development"
+              "buildTarget": "ipo-pro:build:development"
             }
           },
           "defaultConfiguration": "development"
         },
         "extract-i18n": {
-          "builder": "@angular/build:extract-i18n"
-        },
-        "test": {
-          "builder": "@angular/build:karma",
+          "builder": "@angular/build:extract-i18n",
           "options": {
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ],
-            "tsConfig": "tsconfig.spec.json",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "public"
-              }
-            ],
-            "styles": [
-              "src/styles.css"
+            "buildTarget": "ipo-pro:build"
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "src/**/*.ts",
+              "src/**/*.html"
             ]
           }
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "78098098-d354-45f7-8651-2271a72fc826",
+    "schematicCollections": [
+      "@angular-eslint/schematics"
+    ]
   }
 }

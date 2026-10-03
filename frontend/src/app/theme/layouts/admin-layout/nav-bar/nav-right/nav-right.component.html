@@ -1,0 +1,24 @@
+<ul class="list-unstyled">
+  <li class="pc-h-item header-user-profile" ngbDropdown>
+    <a href="javascript:void(0)" class="pc-head-link arrow-none me-0" ngbDropdownToggle>
+      <span class="user-avatar initials me-2">{{ initials() }}</span>
+      <span class="f-w-600 d-none d-sm-inline">{{ displayName() }}</span>
+    </a>
+    <div class="dropdown-user-profile dropdown-menu-end pc-h-dropdown" ngbDropdownMenu>
+      <div class="dropdown-header">
+        <div class="d-flex align-items-center">
+          <span class="user-avatar initials wid-35 flex-shrink-0">{{ initials() }}</span>
+          <div class="flex-grow-1 ms-3 text-start text-truncate">
+            <h6 class="mb-0">{{ displayName() }}</h6>
+            <span class="text-muted text-sm">{{ auth.user()?.email }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="dropdown-divider"></div>
+      <button type="button" class="dropdown-item" (click)="auth.logout()">
+        <i class="text-muted" antIcon theme="outline" type="logout"></i>
+        <span>Sign out</span>
+      </button>
+    </div>
+  </li>
+</ul>

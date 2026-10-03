@@ -1,0 +1,42 @@
+// IPO-PRO additions on top of the Mantis theme.
+
+.b-brand .brand-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: $primary;
+}
+
+// Initials avatar in the header (the template ships stock photos).
+.user-avatar.initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: shift-color($primary, -80%);
+  color: $primary;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  &.wid-35 { width: 35px; height: 35px; }
+}
+
+// Money and counts line up on the right with even digit widths.
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.text-gain { color: $success; }
+.text-loss { color: $danger; }
+
+// Stat tiles on the dashboard.
+.stat-card .card-body { padding: 20px; }
+.stat-card .stat-value { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+// Status filter pills on the IPO list.
+.filter-pills .btn { border-radius: 999px; }
+
+// Compact checkbox list for picking PANs.
+.pan-picker .form-check { padding: 6px 0 6px 1.75rem; border-bottom: 1px solid $border-color; }
+.pan-picker .form-check:last-child { border-bottom: 0; }
+
+.table td, .table th { vertical-align: middle; }

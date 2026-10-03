@@ -11,16 +11,16 @@ export class InrPipe implements PipeTransform {
   }
 }
 
-/** Maps a status code to a badge colour class. */
+/** Maps an application status to a Mantis badge colour class. */
 @Pipe({ name: 'tone' })
 export class TonePipe implements PipeTransform {
   transform(status: string): string {
     switch (status) {
-      case 'OPEN': case 'APPLIED': return 'info';
-      case 'ALLOTTED': case 'PARTIAL': case 'LISTED': return 'good';
-      case 'REJECTED': case 'WITHDRAWN': return 'bad';
-      case 'UPCOMING': case 'DRAFT': return 'muted';
-      default: return 'neutral';
+      case 'OPEN': case 'APPLIED': return 'bg-light-primary';
+      case 'ALLOTTED': case 'PARTIAL': return 'bg-light-success';
+      case 'REJECTED': case 'WITHDRAWN': return 'bg-light-danger';
+      case 'DRAFT': return 'bg-light-secondary';
+      default: return 'bg-light-secondary';
     }
   }
 }

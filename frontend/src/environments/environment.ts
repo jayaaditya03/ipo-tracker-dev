@@ -1,3 +1,7 @@
+import packageInfo from '../../package.json';
+
 export const environment = {
-  apiUrl: 'http://localhost:8000/api',
+  appVersion: packageInfo.version,
+  production: false,
+  apiUrl: 'http://localhost:8000/api'
 };

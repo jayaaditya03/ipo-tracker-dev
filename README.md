@@ -1,9 +1,9 @@
-# IPO Allotment Tracker
+# IPO-PRO
 
 Track Indian IPO applications across every PAN in a family: apply to an issue with several PANs at once, record allotment results, and see hit rate, money blocked and listing gains in one place.
 
 - **Backend:** Django 5 + Django REST Framework, JWT auth (SimpleJWT), PostgreSQL
-- **Frontend:** Angular 20 (standalone components, signals), in [`frontend/`](frontend/)
+- **Frontend:** Angular 21 on the [Mantis](https://github.com/codedthemes/mantis-free-angular-admin-template) admin theme (Bootstrap 5, ng-bootstrap, ApexCharts), in [`frontend/`](frontend/). The theme is MIT-licensed; see [`frontend/LICENSE-MANTIS`](frontend/LICENSE-MANTIS).
 
 ## Features
 
@@ -14,11 +14,11 @@ Track Indian IPO applications across every PAN in a family: apply to an issue wi
 - SEBI rules are enforced: one application per PAN per issue (a database constraint) and the ₹2 lakh retail cap.
 - **Automatic allotment checks across all your PANs:** one click asks the registrar for every pending PAN on an issue and records the result (allotted, partial or not allotted) in the audit log. Works on closed and already-listed issues too, for as long as the registrar keeps them on its site. Supported: **KFin, MUFG Intime and Bigshare**, which handle most issues. For other registrars the app links to their status page.
 - Status changes go through one method that writes an append-only audit log, shown as the application's history.
-- The dashboard's aggregate figures are computed in SQL.
+- **Dashboard:** stat tiles plus charts of results by PAN and overall outcomes. The figures are computed in SQL.
 
 ## Setup
 
-Prerequisites: Python 3.12+, PostgreSQL, Node 20+.
+Prerequisites: Python 3.12+, PostgreSQL, Node 20.19+ (or 22.12+).
 
 ```bash
 # 1. Database
@@ -81,7 +81,7 @@ accounts/   user model, PAN encryption (crypto.py), auth + PAN endpoints
 ipos/       Registrar, IPO, Application, StatusEvent; views; management commands
 config/     settings (read from .env), URLs, pagination
 tests/      pytest suite
-frontend/   Angular app: core/ (API, auth, interceptor), pages/, shared/
+frontend/   Angular app: core/ (API, auth, interceptor), pages/, shared/, theme/ (Mantis layout)
 ```
 
 ## Scheduling (Windows)
