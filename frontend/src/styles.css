@@ -66,6 +66,14 @@ main.narrow { max-width: 420px; padding-top: 4rem; }
 .topbar nav a.active { color: var(--text); border-bottom: 2px solid var(--accent); }
 .topbar .who { display: flex; gap: .75rem; align-items: center; color: var(--muted); font-size: .9rem; }
 
+@media (max-width: 640px) {
+  .topbar { gap: .5rem 1rem; }
+  .topbar .who { margin-left: auto; }
+  .topbar .who span { display: none; }
+  .topbar nav { order: 3; flex-basis: 100%; flex-wrap: nowrap; overflow-x: auto; }
+  .topbar nav a { white-space: nowrap; }
+}
+
 /* ------------------------------------------------------------ cards */
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);

@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, input, OnInit, signal } from '@angular/core';
+import { Component, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -96,7 +96,7 @@ import { InrPipe, TonePipe } from '../shared/format';
     }
   `,
 })
-export class ApplicationsPage implements OnInit {
+export class ApplicationsPage {
   private api = inject(ApiService);
   /** ?ipo=<id> from the query string, bound by withComponentInputBinding. */
   readonly ipo = input<string>();
@@ -118,8 +118,13 @@ export class ApplicationsPage implements OnInit {
   shares: number | null = null;
   note = '';
 
-  ngOnInit() {
-    this.load(1);
+  constructor() {
+    // Re-runs whenever ?ipo= changes. The router reuses this component
+    // when only the query string changes, so ngOnInit alone would miss it.
+    effect(() => {
+      this.ipo();
+      untracked(() => this.load(1));
+    });
   }
 
   label(s: string) {
