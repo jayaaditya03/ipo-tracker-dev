@@ -3,7 +3,7 @@
 Track Indian IPO applications across every PAN in a family: apply to an issue with several PANs at once, record allotment results, and see hit rate, money blocked and listing gains in one place.
 
 - **Backend:** Django 5 + Django REST Framework, JWT auth (SimpleJWT), PostgreSQL
-- **Frontend:** Angular 21 on the [Mantis](https://github.com/codedthemes/mantis-free-angular-admin-template) admin theme (Bootstrap 5, ng-bootstrap, ApexCharts), in [`frontend/`](frontend/). The theme is MIT-licensed; see [`frontend/LICENSE-MANTIS`](frontend/LICENSE-MANTIS).
+- **Frontend:** Angular 21 on the [Mantis](https://github.com/codedthemes/mantis-free-angular-admin-template) admin theme (Bootstrap 5, ng-bootstrap), in [`frontend/`](frontend/). The theme is MIT-licensed; see [`frontend/LICENSE-MANTIS`](frontend/LICENSE-MANTIS).
 
 ## Features
 
@@ -14,7 +14,7 @@ Track Indian IPO applications across every PAN in a family: apply to an issue wi
 - SEBI rules are enforced: one application per PAN per issue (a database constraint) and the ₹2 lakh retail cap.
 - **Automatic allotment checks across all your PANs:** one click asks the registrar for every pending PAN on an issue and records the result (allotted, partial or not allotted) in the audit log. Works on closed and already-listed issues too, for as long as the registrar keeps them on its site. Supported: **KFin, MUFG Intime and Bigshare**, which handle most issues. For other registrars the app links to their status page.
 - Status changes go through one method that writes an append-only audit log, shown as the application's history.
-- **Dashboard:** stat tiles plus charts of results by PAN and overall outcomes. The figures are computed in SQL.
+- **Dashboard:** stat tiles, applications awaiting a result, and a per-applicant hit-rate table. The figures are computed in SQL.
 
 ## Setup
 
