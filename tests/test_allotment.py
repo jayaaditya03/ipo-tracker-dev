@@ -13,7 +13,7 @@ import httpx
 import pytest
 import respx
 
-from ipos.allotment import ADAPTERS, CheckResult, Outcome, RegistrarAdapter, bigshare, kfin, mufg
+from ipos.allotment import ADAPTERS, CheckResult, Outcome, RegistrarAdapter, bigshare, kfin, maashitla, mufg, skyline
 from ipos.allotment.base import normalise_name
 from ipos.allotment.service import check_applications
 from ipos.models import Application, Registrar, StatusEvent
@@ -258,3 +258,62 @@ class TestCheckPans:
                           {"ipo_id": self.ipo.id, "pan_ids": [theirs.id]}, format="json")
         assert res.status_code == 400
         assert not Application.objects.exists()
+
+
+class TestMaashitla:
+    def test_directory(self):
+        companies = maashitla.parse_directory(json.loads(read("maashitla_directory.json")))
+        assert ("himalayan-solar-limited", "HIMALAYAN SOLAR LIMITED") in companies
+
+    def test_empty_reply_is_not_found(self):
+        # What the live API returned for a PAN with no application.
+        assert maashitla.parse_check({}).outcome == Outcome.NOT_FOUND
+
+    def test_allotted_and_not(self):
+        r = maashitla.parse_check({"name": "X", "shares_applied": "1200", "shares_allotted": "1200"})
+        assert (r.outcome, r.shares_allotted) == (Outcome.ALLOTTED, 1200)
+        r = maashitla.parse_check({"name": "X", "shares_applied": "1200", "shares_allotted": "0"})
+        assert r.outcome == Outcome.NOT_ALLOTTED
+
+    @respx.mock
+    def test_full_flow(self):
+        respx.get(maashitla.DIRECTORY).respond(200, text=read("maashitla_directory.json"))
+        api = respx.get(url__startswith=maashitla.CHECK).respond(404)
+        a = maashitla.MaashitlaAdapter()
+        ref = a.find_issue("Himalayan Solar Limited")
+        assert ref == "himalayan-solar-limited"
+        assert a.check(ref, "ABCDE1234F").outcome == Outcome.NOT_FOUND
+        assert api.calls.last.request.url.path.endswith("/check/himalayan-solar-limited")
+
+
+class TestSkyline:
+    def test_companies_and_token(self):
+        companies = skyline.parse_companies(read("skyline_companies.html"))
+        assert ("3510", "MADHUR KNIT CRAFTS LIMITED") in companies
+        assert len(skyline.csrf_token(read("skyline_form.html"))) == 64
+
+    def test_no_record(self):
+        assert skyline.parse_result(read("skyline_notfound.html")).outcome == Outcome.NOT_FOUND
+
+    def test_result_table(self):
+        html = ("<table><tr><td>Name</td><td>X</td></tr>"
+                "<tr><td>Shares Applied</td><td>2,000</td></tr><tr><td>Shares Allotted</td><td>1,000</td></tr></table>")
+        r = skyline.parse_result(html)
+        assert (r.outcome, r.shares_applied, r.shares_allotted) == (Outcome.ALLOTTED, 2000, 1000)
+
+    def test_unreadable_reply_is_an_error(self):
+        with pytest.raises(skyline.RegistrarError):
+            skyline.parse_result("<p>Something unexpected</p>")
+
+    @respx.mock
+    def test_full_flow(self):
+        respx.get(skyline.BASE + "ipo.php").respond(200, text=read("skyline_companies.html"))
+        post = respx.post(skyline.BASE + "display_application.php").mock(side_effect=[
+            httpx.Response(200, text=read("skyline_form.html")),
+            httpx.Response(200, text=read("skyline_notfound.html")),
+        ])
+        a = skyline.SkylineAdapter()
+        ref = a.find_issue("Madhur Knit Crafts Limited")
+        assert a.check(ref, "ABCDE1234F").outcome == Outcome.NOT_FOUND
+        sent = post.calls.last.request.content.decode()
+        assert "pan=ABCDE1234F" in sent and "csrf_token=" in sent and "company=3510" in sent
