@@ -86,21 +86,21 @@ frontend/   Angular app: core/ (API, auth, interceptor), pages/, shared/, theme/
 
 ## Scheduling (Windows)
 
-Two scripts in  run the daily jobs and append to :
+Two scripts in `scripts/` run the daily jobs and append their output to `logs/`:
 
 | Task | Script | Runs | Does |
 | --- | --- | --- | --- |
-| IPO-PRO sync |  | 08:00 |  +  →  |
-| IPO-PRO allotment checks |  | 21:00 |  +  →  |
+| IPO-PRO sync | `scripts/daily-sync.cmd` | 08:00 | `sync_ipos` + `refresh_ipo_status` → `logs/sync.log` |
+| IPO-PRO allotment checks | `scripts/daily-checks.cmd` | 21:00 | `refresh_ipo_status` + `check_allotments` → `logs/checks.log` |
 
-Register them once (run from the repo root in PowerShell):
+Register them once, from the repo root in PowerShell:
 
-\Windows PowerShell
-Copyright (C) Microsoft Corporation. All rights reserved.
+```powershell
+schtasks /Create /F /TN "IPO-PRO sync" /SC DAILY /ST 08:00 /TR "`"$PWD\scripts\daily-sync.cmd`""
+schtasks /Create /F /TN "IPO-PRO allotment checks" /SC DAILY /ST 21:00 /TR "`"$PWD\scripts\daily-checks.cmd`""
+```
 
-PS C:UsersjayasDesktopProjectsipo-tracker> "/c/Users/jayas/Desktop/Projects/ipo-trackerscriptsdaily-sync.cmd"/c/Users/jayas/Desktop/Projects/ipo-trackerscriptsdaily-checks.cmd\
-
-The tasks run while you're signed in to Windows, and PostgreSQL must be running. Run one now with , and remove them with . On macOS or Linux, call  the same way from .
+The tasks run while you're signed in to Windows, and PostgreSQL must be running. Run one immediately with `schtasks /Run /TN "IPO-PRO sync"`, and remove one with `schtasks /Delete /TN "IPO-PRO sync"`. On macOS or Linux, run the same `manage.py` commands from `crontab -e`.
 
 ## How the data sources work
 
