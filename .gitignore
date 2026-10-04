@@ -9,3 +9,4 @@ staticfiles/
 node_modules/
 dist/
 .DS_Store
+logs/

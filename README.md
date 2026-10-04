@@ -86,16 +86,21 @@ frontend/   Angular app: core/ (API, auth, interceptor), pages/, shared/, theme/
 
 ## Scheduling (Windows)
 
-Run the daily jobs with Task Scheduler, for example:
+Two scripts in  run the daily jobs and append to :
 
-```powershell
-$py  = "C:\path\to\ipo-tracker\.venv\Scripts\python.exe"
-$dir = "C:\path\to\ipo-tracker"
-schtasks /Create /TN "IPO sync"   /SC DAILY /ST 08:00 /TR "cmd /c cd /d $dir && $py manage.py sync_ipos"
-schtasks /Create /TN "IPO checks" /SC DAILY /ST 19:00 /TR "cmd /c cd /d $dir && $py manage.py check_allotments"
-```
+| Task | Script | Runs | Does |
+| --- | --- | --- | --- |
+| IPO-PRO sync |  | 08:00 |  +  →  |
+| IPO-PRO allotment checks |  | 21:00 |  +  →  |
 
-On macOS or Linux, add the same two commands to `crontab -e`.
+Register them once (run from the repo root in PowerShell):
+
+\Windows PowerShell
+Copyright (C) Microsoft Corporation. All rights reserved.
+
+PS C:UsersjayasDesktopProjectsipo-tracker> "/c/Users/jayas/Desktop/Projects/ipo-trackerscriptsdaily-sync.cmd"/c/Users/jayas/Desktop/Projects/ipo-trackerscriptsdaily-checks.cmd\
+
+The tasks run while you're signed in to Windows, and PostgreSQL must be running. Run one now with , and remove them with . On macOS or Linux, call  the same way from .
 
 ## How the data sources work
 
