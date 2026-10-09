@@ -1,8 +1,9 @@
 // angular import
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 // project import
+import { AuthService } from './core/auth.service';
 import { SpinnerComponent } from './theme/shared/components/spinner/spinner.component';
 
 @Component({
@@ -14,4 +15,10 @@ import { SpinnerComponent } from './theme/shared/components/spinner/spinner.comp
 export class AppComponent {
   // public props
   title = 'IPO-PRO';
+
+  constructor() {
+    // Refresh the cached user so fields added since sign-in (is_staff) are current.
+    const auth = inject(AuthService);
+    if (auth.isLoggedIn()) auth.loadMe().subscribe({ error: () => undefined });
+  }
 }

@@ -130,3 +130,70 @@ def test_applications_filter_by_status_group(client, user, ipo):
     assert {r["pan_label"] for r in res.data["results"]} == {"Self", "Father"}
     res = client.get("/api/applications/", {"pan": c.id})
     assert [r["pan_label"] for r in res.data["results"]] == ["Mother"]
+
+
+class TestGains:
+    def test_by_pan_realised_gain(self, client, user, ipo):
+        ipo.listing_price = Decimal("120")
+        ipo.save()
+        a = make_pan(user, "ABCDE1234F", "Self")
+        b = make_pan(user, "PQRST6789Z", "Father")
+        Application.objects.create(owner=user, ipo=ipo, pan=a, bid_price=100,
+                                   status=Application.Status.ALLOTTED, shares_allotted=150)
+        Application.objects.create(owner=user, ipo=ipo, pan=b, bid_price=100,
+                                   status=Application.Status.REJECTED)
+        rows = {r["pan__label"]: r for r in client.get("/api/dashboard/summary/").data["by_pan"]}
+        assert rows["Self"]["realised_gain"] == Decimal("3000")
+        assert rows["Father"]["realised_gain"] == Decimal("0")
+
+    def test_expected_gain_from_gmp_until_listing(self, client, user, ipo):
+        ipo.gmp = Decimal("15")
+        ipo.save()
+        pan = make_pan(user)
+        app = Application.objects.create(owner=user, ipo=ipo, pan=pan, bid_price=100,
+                                         status=Application.Status.ALLOTTED, shares_allotted=150)
+
+        assert client.get("/api/dashboard/summary/").data["expected_gain"] == Decimal("2250")
+        assert client.get(f"/api/applications/{app.pk}/").data["expected_gain"] == "2250.00"
+
+        # Once listed, the real figure replaces the estimate.
+        ipo.listing_price = Decimal("110")
+        ipo.save()
+        data = client.get("/api/dashboard/summary/").data
+        assert data["expected_gain"] == Decimal("0")
+        assert data["realised_gain"] == Decimal("1500")
+        assert client.get(f"/api/applications/{app.pk}/").data["expected_gain"] is None
+
+    def test_negative_gmp(self, client, user, ipo):
+        ipo.gmp = Decimal("-5")
+        ipo.save()
+        Application.objects.create(owner=user, ipo=ipo, pan=make_pan(user), bid_price=100,
+                                   status=Application.Status.ALLOTTED, shares_allotted=150)
+        assert client.get("/api/dashboard/summary/").data["expected_gain"] == Decimal("-750")
+
+
+class TestPricesEndpoint:
+    def test_staff_sets_and_clears(self, client, user, ipo):
+        user.is_staff = True
+        user.save()
+        res = client.patch(f"/api/ipos/{ipo.pk}/prices/", {"listing_price": "131.50", "gmp": "20"}, format="json")
+        assert res.status_code == 200
+        assert res.data["listing_price"] == "131.50"
+        assert res.data["listing_gain_pct"] == "31.50"
+
+        res = client.patch(f"/api/ipos/{ipo.pk}/prices/", {"gmp": None}, format="json")
+        ipo.refresh_from_db()
+        assert ipo.gmp is None and ipo.listing_price == Decimal("131.50")
+
+    def test_rejects_non_positive_listing_price(self, client, user, ipo):
+        user.is_staff = True
+        user.save()
+        res = client.patch(f"/api/ipos/{ipo.pk}/prices/", {"listing_price": "0"}, format="json")
+        assert res.status_code == 400
+
+    def test_non_staff_forbidden(self, client, ipo):
+        res = client.patch(f"/api/ipos/{ipo.pk}/prices/", {"gmp": "10"}, format="json")
+        assert res.status_code == 403
+
+    def test_me_reports_staff(self, client):
+        assert client.get("/api/auth/me/").data["is_staff"] is False

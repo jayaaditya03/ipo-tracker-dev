@@ -34,6 +34,10 @@ export class ApiService {
   openNow(): Observable<Ipo[]> {
     return this.http.get<Ipo[]>(`${this.base}/ipos/open_now/`);
   }
+  /** Staff only. null clears a value. */
+  setPrices(id: number, body: { listing_price?: string | null; gmp?: string | null }): Observable<Ipo> {
+    return this.http.patch<Ipo>(`${this.base}/ipos/${id}/prices/`, body);
+  }
 
   // ---------------------------------------------------------------- PANs
   pans(q?: Query): Observable<Page<Pan>> {

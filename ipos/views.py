@@ -24,6 +24,7 @@ from .serializers import (
     CheckPansSerializer,
     IPODetailSerializer,
     IPOListSerializer,
+    IPOPricesSerializer,
     RegistrarSerializer,
     StatusEventSerializer,
 )
@@ -90,6 +91,19 @@ class IPOViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
         return Response({"created": len(r.created), "updated": len(r.updated),
                          "unchanged": r.unchanged, "errors": r.errors})
+
+    @action(detail=True, methods=["patch"], permission_classes=[permissions.IsAdminUser])
+    def prices(self, request, pk=None):
+        """
+        PATCH /api/ipos/{id}/prices/ — staff only. Sets listing price and
+        GMP, which the NSE feed does not carry. The catalogue is shared by
+        every account, hence staff only. Send null to clear a value.
+        """
+        ipo = self.get_object()
+        ser = IPOPricesSerializer(ipo, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response(IPODetailSerializer(self.get_queryset().get(pk=ipo.pk), context={"request": request}).data)
 
 
 class ApplicationViewSet(viewsets.ModelViewSet):
@@ -389,6 +403,22 @@ class DashboardSummaryView(APIView):
         )
         totals["realised_gain"] = gain["total"]
 
+        # Expected gain from the grey market premium, for allotted shares
+        # that have not listed yet. Indicative only.
+        expected = qs.filter(
+            status__in=[Application.Status.ALLOTTED, Application.Status.PARTIAL],
+            ipo__listing_price__isnull=True,
+            ipo__gmp__isnull=False,
+            ipo__price_band_high__isnull=False,
+        ).aggregate(
+            total=Coalesce(
+                Sum(F("shares_allotted") * (F("ipo__price_band_high") + F("ipo__gmp") - F("bid_price")),
+                    output_field=MONEY),
+                Value(Decimal("0")), output_field=MONEY,
+            )
+        )
+        totals["expected_gain"] = expected["total"]
+
         totals["by_pan"] = list(
             qs.exclude(status=Application.Status.DRAFT)
               .values("pan__id", "pan__label")
@@ -397,6 +427,12 @@ class DashboardSummaryView(APIView):
                   allotted=Count("id", filter=Q(status__in=[
                       Application.Status.ALLOTTED, Application.Status.PARTIAL,
                   ])),
+                  realised_gain=Coalesce(
+                      Sum(F("shares_allotted") * (F("ipo__listing_price") - F("bid_price")),
+                          filter=Q(ipo__listing_price__isnull=False, shares_allotted__gt=0),
+                          output_field=MONEY),
+                      Value(Decimal("0")), output_field=MONEY,
+                  ),
               )
               .order_by("-applications")
         )

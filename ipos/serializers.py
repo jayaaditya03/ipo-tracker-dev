@@ -35,7 +35,7 @@ class IPOListSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "symbol", "board", "status", "registrar",
             "price_band_low", "price_band_high", "cutoff_price",
-            "lot_size", "lot_amount", "gmp",
+            "lot_size", "lot_amount", "gmp", "listing_price",
             "open_date", "close_date", "allotment_date", "listing_date", "dates_estimated",
         ]
 
@@ -52,7 +52,7 @@ class IPODetailSerializer(IPOListSerializer):
 
     class Meta(IPOListSerializer.Meta):
         fields = IPOListSerializer.Meta.fields + [
-            "issue_size_cr", "refund_date", "listing_price",
+            "issue_size_cr", "refund_date",
             "listing_gain_pct", "my_application_count", "created_at",
         ]
 
@@ -65,6 +65,15 @@ class IPODetailSerializer(IPOListSerializer):
         if not request or not request.user.is_authenticated:
             return 0
         return obj.applications.filter(owner=request.user).count()
+
+
+class IPOPricesSerializer(serializers.ModelSerializer):
+    """Staff edit of the two figures NSE does not publish in its IPO feed."""
+
+    class Meta:
+        model = IPO
+        fields = ["listing_price", "gmp"]
+        extra_kwargs = {"listing_price": {"min_value": Decimal("0.01")}}
 
 
 class StatusEventSerializer(serializers.ModelSerializer):
@@ -90,6 +99,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
     shares_applied = serializers.IntegerField(read_only=True)
     amount_blocked = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
     listing_gain = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
+    expected_gain = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
@@ -97,7 +107,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
         fields = [
             "id", "ipo", "ipo_id", "pan_id", "pan_label", "pan_masked",
             "category", "status", "status_display", "lots", "bid_price",
-            "shares_applied", "amount_blocked", "shares_allotted", "listing_gain",
+            "shares_applied", "amount_blocked", "shares_allotted", "listing_gain", "expected_gain",
             "application_number", "bank_reference", "notes",
             "applied_at", "checked_at", "created_at", "updated_at",
         ]
