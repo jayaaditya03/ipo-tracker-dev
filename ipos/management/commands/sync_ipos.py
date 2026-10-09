@@ -5,7 +5,8 @@ Pull current, upcoming and recently closed IPOs from NSE.
     python manage.py sync_ipos --past-days 120
 
 Idempotent: safe to run as often as you like. Run it daily (Task Scheduler
-or cron) together with check_allotments.
+or cron) together with check_allotments. Exits non-zero when NSE can't be
+reached, or when every issue failed.
 """
 
 from django.core.management.base import BaseCommand, CommandError
@@ -33,7 +34,8 @@ class Command(BaseCommand):
             self.stdout.write(f"  ~ {name}")
         for err in report.errors:
             self.stdout.write(self.style.WARNING(f"  ! {err}"))
-        self.stdout.write(self.style.SUCCESS(
-            f"Created {len(report.created)}, updated {len(report.updated)}, "
-            f"unchanged {report.unchanged}, errors {len(report.errors)}."
-        ))
+        line = (f"Created {len(report.created)}, updated {len(report.updated)}, "
+                f"unchanged {report.unchanged}, errors {len(report.errors)}.")
+        if report.errors and not (report.created or report.updated or report.unchanged):
+            raise CommandError(line)
+        self.stdout.write(self.style.SUCCESS(line))

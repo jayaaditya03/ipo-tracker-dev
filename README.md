@@ -76,6 +76,10 @@ All endpoints are under `/api/` and need `Authorization: Bearer <access>`, excep
 
 List endpoints are paginated. Pass `?page_size=` for up to 100 rows per page.
 
+Rate limits: login and register allow 10 requests a minute (`THROTTLE_AUTH`), and the two allotment-check endpoints 30 an hour per account (`THROTTLE_REGISTRAR`), so the server's IP doesn't get blocked by a registrar. Over the limit, the API answers 429.
+
+During a check, a registrar that fails three times in a row is skipped for the rest of that run. If an application's status changes while it is being checked (by hand, or by a second check), the newer status is kept.
+
 ## Project layout
 
 ```
@@ -101,6 +105,8 @@ Register them once, from the repo root in PowerShell:
 schtasks /Create /F /TN "IPO-PRO sync" /SC DAILY /ST 08:00 /TR "`"$PWD\scripts\daily-sync.cmd`""
 schtasks /Create /F /TN "IPO-PRO allotment checks" /SC DAILY /ST 21:00 /TR "`"$PWD\scripts\daily-checks.cmd`""
 ```
+
+Both commands exit non-zero when nothing worked (NSE unreachable, or every allotment check failed), so Task Scheduler's "Last Run Result" flags a bad night. Warnings, such as a registrar whose replies the app no longer understands, go to the same log.
 
 The tasks run while you're signed in to Windows, and PostgreSQL must be running. Run one immediately with `schtasks /Run /TN "IPO-PRO sync"`, and remove one with `schtasks /Delete /TN "IPO-PRO sync"`. On macOS or Linux, run the same `manage.py` commands from `crontab -e`.
 

@@ -130,6 +130,14 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
     ),
     "DEFAULT_PAGINATION_CLASS": "config.pagination.StandardPagination",
+    # Only views that set throttle_scope are throttled. "auth" slows down
+    # password guessing; "registrar" keeps one account from getting the
+    # server's IP blocked by a registrar (each call asks about up to 25 PANs).
+    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),
+    "DEFAULT_THROTTLE_RATES": {
+        "auth": env("THROTTLE_AUTH", default="10/min"),
+        "registrar": env("THROTTLE_REGISTRAR", default="30/hour"),
+    },
     "DATETIME_FORMAT": "iso-8601",
 }
 
@@ -168,6 +176,27 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+
+# ------------------------------------------------------------ logging
+
+# Warnings and errors go to stderr, which the scheduled-task scripts append
+# to logs/. Without this, a registrar that starts failing is silent.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "plain"},
+    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        "ipos": {"level": env("LOG_LEVEL", default="INFO")},
+        "accounts": {"level": env("LOG_LEVEL", default="INFO")},
+    },
+}
 
 
 # -------------------------------------------------------------- debug

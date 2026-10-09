@@ -60,6 +60,13 @@ def make_pan(owner, pan="ABCDE1234F", label="Self"):
     return obj
 
 
+@pytest.fixture(autouse=True)
+def _clear_throttles():
+    # Throttle counters live in the cache, which outlives a single test.
+    from django.core.cache import cache
+    cache.clear()
+
+
 @pytest.fixture
 def user(db):
     return UserFactory()

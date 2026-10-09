@@ -109,6 +109,8 @@ class IPOViewSet(viewsets.ReadOnlyModelViewSet):
 class ApplicationViewSet(viewsets.ModelViewSet):
     serializer_class = ApplicationSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwner]
+    # None = not throttled. The registrar-check actions override it.
+    throttle_scope = None
     # status__in lets the UI group results, e.g. ?status__in=ALLOTTED,PARTIAL
     filterset_fields = {"status": ["exact", "in"], "category": ["exact"], "ipo": ["exact"],
                         "pan": ["exact"], "ipo__board": ["exact"]}
@@ -202,7 +204,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], throttle_scope="registrar")
     def check(self, request):
         """
         POST /api/applications/check/
@@ -232,7 +234,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             summary[r["outcome"]] = summary.get(r["outcome"], 0) + 1
         return Response({"results": rows, "summary": summary})
 
-    @action(detail=False, methods=["post"])
+    @action(detail=False, methods=["post"], throttle_scope="registrar")
     def check_pans(self, request):
         """
         POST /api/applications/check_pans/
@@ -263,12 +265,18 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         for pan in pans:
             if pan.id in existing:
                 continue
-            app = Application.objects.create(
-                owner=request.user, ipo=ipo, pan=pan, category=category, lots=1,
-                bid_price=ipo.cutoff_price, status=Application.Status.APPLIED,
-            )
-            StatusEvent.objects.create(application=app, to_status=app.status,
-                                       note="Recorded for an allotment check.")
+            try:
+                with transaction.atomic():
+                    app = Application.objects.create(
+                        owner=request.user, ipo=ipo, pan=pan, category=category, lots=1,
+                        bid_price=ipo.cutoff_price, status=Application.Status.APPLIED,
+                    )
+                    StatusEvent.objects.create(application=app, to_status=app.status,
+                                               note="Recorded for an allotment check.")
+            except IntegrityError:
+                # A concurrent request (a double click) recorded it first.
+                existing[pan.id] = Application.objects.get(ipo=ipo, pan=pan)
+                continue
             existing[pan.id] = app
             created_ids.add(app.id)
 

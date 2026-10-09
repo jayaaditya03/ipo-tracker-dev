@@ -21,11 +21,13 @@ class RegisterView(generics.CreateAPIView):
     # The one endpoint that must be open — everything else inherits
     # IsAuthenticated from REST_FRAMEWORK settings.
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth"
 
 
 class LoginView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth"
 
 
 class MeView(generics.RetrieveUpdateAPIView):

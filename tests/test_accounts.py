@@ -82,3 +82,11 @@ class TestPan:
 
 def test_mask_pan():
     assert mask_pan("ABCDE1234F") == "XXXXX1234F"
+
+
+@pytest.mark.django_db
+def test_login_is_throttled(anon, user):
+    codes = [anon.post("/api/auth/login/", {"email": user.email, "password": "wrong"}).status_code
+             for _ in range(11)]
+    assert codes[:10] == [401] * 10
+    assert codes[10] == 429

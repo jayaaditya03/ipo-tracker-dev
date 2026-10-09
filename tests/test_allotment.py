@@ -196,6 +196,108 @@ class TestService:
         assert row["outcome"] == "not_published"
 
 
+    def test_unexpected_reply_does_not_stop_batch(self, user, fake_registrar):
+        _, a, b = self._apps(user, fake_registrar)
+
+        class Changed(FakeAdapter):
+            def check(self, issue_ref, pan):
+                if pan == "ABCDE1234F":
+                    raise TypeError("'NoneType' object is not subscriptable")
+                return CheckResult(Outcome.NOT_ALLOTTED, 150, 0)
+
+        rows = check_applications([a, b], adapters={"fake": Changed}, pause=0)
+        assert [r["outcome"] for r in rows] == ["error", "not_allotted"]
+        assert "site may have changed" in rows[0]["message"]
+
+    def test_issue_list_fetched_once_per_batch(self, user, fake_registrar):
+        ipo = IPOFactory(name="Something Else Limited", registrar=fake_registrar)
+        apps = [Application.objects.create(owner=user, ipo=ipo, pan=make_pan(user, pan, label),
+                                           bid_price=100, status=Application.Status.APPLIED)
+                for pan, label in [("ABCDE1234F", "A"), ("PQRST6789Z", "B"), ("LMNOP4321Q", "C")]]
+        calls = []
+
+        class Counting(FakeAdapter):
+            def issues(self):
+                calls.append(1)
+                return super().issues()
+
+        rows = check_applications(apps, adapters={"fake": Counting}, pause=0)
+        assert [r["outcome"] for r in rows] == ["not_published"] * 3
+        assert len(calls) == 1
+
+    def test_registrar_skipped_after_repeated_failures(self, user, fake_registrar):
+        ipo = IPOFactory(name="Fake Issue Limited", registrar=fake_registrar)
+        pans = ["ABCDE1234F", "PQRST6789Z", "LMNOP4321Q", "FGHIJ5678K", "UVWXY1357A"]
+        apps = [Application.objects.create(owner=user, ipo=ipo, pan=make_pan(user, p, p), bid_price=100,
+                                           status=Application.Status.APPLIED) for p in pans]
+        calls = []
+
+        class Down(FakeAdapter):
+            def check(self, issue_ref, pan):
+                calls.append(pan)
+                raise httpx.ConnectTimeout("timed out")
+
+        rows = check_applications(apps, adapters={"fake": Down}, pause=0)
+        assert [r["outcome"] for r in rows] == ["error"] * 5
+        assert len(calls) == 3
+        assert rows[-1]["message"].startswith("Skipped")
+
+    def test_success_resets_failure_count(self, user, fake_registrar):
+        ipo = IPOFactory(name="Fake Issue Limited", registrar=fake_registrar)
+        pans = ["ABCDE1234F", "PQRST6789Z", "LMNOP4321Q", "FGHIJ5678K", "UVWXY1357A"]
+        apps = [Application.objects.create(owner=user, ipo=ipo, pan=make_pan(user, p, p), bid_price=100,
+                                           status=Application.Status.APPLIED) for p in pans]
+
+        class Patchy(FakeAdapter):
+            def check(self, issue_ref, pan):
+                if pan == "LMNOP4321Q":
+                    return CheckResult(Outcome.NOT_ALLOTTED, 150, 0)
+                raise httpx.ConnectTimeout("timed out")
+
+        rows = check_applications(apps, adapters={"fake": Patchy}, pause=0)
+        assert not any(r["message"].startswith("Skipped") for r in rows)
+
+    def test_status_changed_during_check_wins(self, user, fake_registrar):
+        _, a, _ = self._apps(user, fake_registrar)
+        stale = Application.objects.select_related("ipo", "ipo__registrar", "pan").get(pk=a.pk)
+        # The user marks it by hand while the registrar is being asked.
+        Application.objects.filter(pk=a.pk).update(status=Application.Status.REJECTED)
+        FakeAdapter.answers = {"ABCDE1234F": CheckResult(Outcome.ALLOTTED, 300, 300)}
+
+        [row] = check_applications([stale], adapters={"fake": FakeAdapter}, pause=0)
+        a.refresh_from_db()
+        assert a.status == Application.Status.REJECTED
+        assert row["status"] == Application.Status.REJECTED
+        assert row["message"].startswith("Not recorded")
+        assert not a.events.filter(source=StatusEvent.Source.REGISTRAR).exists()
+
+
+@pytest.mark.django_db
+class TestCheckAllotmentsCommand:
+    def test_fails_when_every_check_fails(self, user, fake_registrar, monkeypatch):
+        from django.core.management import CommandError, call_command
+
+        class Down(FakeAdapter):
+            def check(self, issue_ref, pan):
+                raise httpx.ConnectError("down")
+
+        monkeypatch.setitem(ADAPTERS, "fake", Down)
+        monkeypatch.setattr("ipos.allotment.service.time.sleep", lambda s: None)
+        ipo = IPOFactory(name="Fake Issue Limited", registrar=fake_registrar)
+        Application.objects.create(owner=user, ipo=ipo, pan=make_pan(user), bid_price=100,
+                                   status=Application.Status.APPLIED)
+        with pytest.raises(CommandError):
+            call_command("check_allotments", stdout=open("/dev/null", "w"))
+
+    def test_nothing_to_check_succeeds(self, db):
+        from io import StringIO
+
+        from django.core.management import call_command
+        out = StringIO()
+        call_command("check_allotments", stdout=out)
+        assert "nothing to check" in out.getvalue()
+
+
 @pytest.mark.django_db
 def test_check_endpoint_only_touches_own_applications(client, user, other_user, fake_registrar, monkeypatch):
     monkeypatch.setitem(ADAPTERS, "fake", FakeAdapter)
@@ -317,3 +419,12 @@ class TestSkyline:
         assert a.check(ref, "ABCDE1234F").outcome == Outcome.NOT_FOUND
         sent = post.calls.last.request.content.decode()
         assert "pan=ABCDE1234F" in sent and "csrf_token=" in sent and "company=3510" in sent
+
+
+@pytest.mark.django_db
+def test_check_endpoint_is_throttled(client):
+    codes = [client.post("/api/applications/check/", {}, format="json").status_code for _ in range(31)]
+    assert set(codes[:30]) == {200}
+    assert codes[30] == 429
+    # Other application endpoints are not throttled.
+    assert client.get("/api/applications/").status_code == 200
