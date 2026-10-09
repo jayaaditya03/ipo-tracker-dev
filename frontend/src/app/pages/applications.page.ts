@@ -66,7 +66,13 @@ import { InrPipe, TonePipe } from '../shared/format';
                 <td class="num">{{ a.amount_blocked | inr }}</td>
                 <td><span class="badge" [class]="a.status | tone">{{ a.status_display }}</span></td>
                 <td class="num">{{ a.shares_allotted || '—' }}</td>
-                <td class="num" [class.text-gain]="+(a.listing_gain ?? 0) > 0" [class.text-loss]="+(a.listing_gain ?? 0) < 0">{{ a.listing_gain | inr }}</td>
+                <td class="num">
+                  @if (a.listing_gain === null && a.expected_gain !== null) {
+                    <span class="text-muted" title="From the grey market premium">{{ a.expected_gain | inr }} est.</span>
+                  } @else {
+                    <span [class.text-gain]="+(a.listing_gain ?? 0) > 0" [class.text-loss]="+(a.listing_gain ?? 0) < 0">{{ a.listing_gain | inr }}</span>
+                  }
+                </td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-outline-primary" (click)="editing()?.id === a.id ? editing.set(null) : open(a)">
                     {{ editing()?.id === a.id ? 'Close' : 'Update' }}

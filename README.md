@@ -14,7 +14,8 @@ Track Indian IPO applications across every PAN in a family: apply to an issue wi
 - SEBI rules are enforced: one application per PAN per issue (a database constraint) and the ₹2 lakh retail cap.
 - **Automatic allotment checks across all your PANs:** one click asks the registrar for every pending PAN on an issue and records the result (allotted, partial or not allotted) in the audit log. Works on closed and already-listed issues too, for as long as the registrar keeps them on its site. Supported: **KFin, MUFG Intime, Bigshare, Maashitla and Skyline**, which together handle over 90% of issues. For the rest (Cameo, Purva and a few smaller registrars) the app links to their status page.
 - Status changes go through one method that writes an append-only audit log, shown as the application's history.
-- **Dashboard:** stat tiles, applications awaiting a result, and a per-applicant hit-rate table. The figures are computed in SQL.
+- **Gains:** realised listing gain per application, per applicant and overall, and an "est." gain from the grey market premium (allotted shares × (cut-off + GMP − bid)) until the issue lists. NSE's IPO feed carries neither listing price nor GMP, so staff enter them on the IPO page.
+- **Dashboard:** stat tiles, applications awaiting a result, and a per-applicant hit-rate and gain table. The figures are computed in SQL.
 
 ## Setup
 
@@ -64,13 +65,14 @@ All endpoints are under `/api/` and need `Authorization: Bearer <access>`, excep
 | GET/PATCH | `/auth/me/` | Current user |
 | CRUD | `/pans/` | Your PANs. Deleting a PAN that has applications deactivates it instead. |
 | GET | `/ipos/`, `/ipos/{id}/`, `/ipos/open_now/` | IPO catalogue. Filters: `status`, `board`, `search` |
+| PATCH | `/ipos/{id}/prices/` | Staff only. `{listing_price?, gmp?}`; `null` clears a value. |
 | CRUD | `/applications/` | Your applications. Filters: `status`, `ipo`, `pan`, `search` |
 | POST | `/applications/bulk/` | `{ipo_id, pan_ids[], lots, category, mark_applied}` |
 | POST | `/applications/check_pans/` | `{ipo_id, pan_ids[]}`. Checks any issue, including listed ones. Keeps only the applications the registrar confirms. |
 | POST | `/applications/check/` | Optional `{ipo_id}` or `{application_ids[]}`. Checks allotment with the registrars, up to 25 PANs per call. |
 | POST | `/applications/{id}/set_status/` | `{status, shares_allotted?, note?}` |
 | GET | `/applications/{id}/events/` | Status history |
-| GET | `/dashboard/summary/` | Totals, hit rate and a per-PAN breakdown |
+| GET | `/dashboard/summary/` | Totals, hit rate, realised and expected gain, and a per-PAN breakdown |
 
 List endpoints are paginated. Pass `?page_size=` for up to 100 rows per page.
 

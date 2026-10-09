@@ -7,6 +7,7 @@ export interface User {
   id: number;
   email: string;
   full_name: string;
+  is_staff?: boolean;
   created_at: string;
   pan_count?: number;
 }
@@ -68,6 +69,7 @@ export interface Ipo {
   lot_size: number | null;
   lot_amount: string | null;
   gmp: string | null;
+  listing_price: string | null;
   open_date: string | null;
   close_date: string | null;
   allotment_date: string | null;
@@ -76,7 +78,6 @@ export interface Ipo {
   // detail only
   issue_size_cr?: string | null;
   refund_date?: string | null;
-  listing_price?: string | null;
   listing_gain_pct?: string | null;
   my_application_count?: number;
 }
@@ -128,6 +129,8 @@ export interface Application {
   amount_blocked: string;
   shares_allotted: number;
   listing_gain: string | null;
+  /** From GMP, until a listing price is known. Indicative only. */
+  expected_gain: string | null;
   application_number: string;
   bank_reference: string;
   notes: string;
@@ -160,8 +163,9 @@ export interface DashboardSummary {
   blocked: string;
   invested: string;
   realised_gain: string;
+  expected_gain: string;
   hit_rate: number;
-  by_pan: { pan__id: number; pan__label: string; applications: number; allotted: number }[];
+  by_pan: { pan__id: number; pan__label: string; applications: number; allotted: number; realised_gain: string }[];
 }
 
 export type CheckOutcome = 'allotted' | 'not_allotted' | 'not_found' | 'not_published' | 'unsupported' | 'error';

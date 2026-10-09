@@ -30,7 +30,7 @@ import { InrPipe } from '../shared/format';
     @if (s(); as s) {
       <div class="row">
         @for (t of tiles(); track t.label) {
-          <div class="col-6 col-md-4 col-xl-2">
+          <div class="col-6 col-md-4 col-xl">
             <div class="card stat-card">
               <div class="card-body">
                 <h6 class="mb-2 f-w-400 text-muted">{{ t.label }}</h6>
@@ -73,7 +73,7 @@ import { InrPipe } from '../shared/format';
             <div class="card-header"><h5 class="mb-0">By applicant</h5></div>
             <div class="table-responsive">
               <table class="table table-hover mb-0">
-                <thead><tr><th>Applicant</th><th class="num">Applied</th><th class="num">Allotted</th><th class="num">Hit rate</th></tr></thead>
+                <thead><tr><th>Applicant</th><th class="num">Applied</th><th class="num">Allotted</th><th class="num">Hit rate</th><th class="num">Listing gain</th></tr></thead>
                 <tbody>
                   @for (p of s.by_pan; track p.pan__id) {
                     <tr>
@@ -81,9 +81,10 @@ import { InrPipe } from '../shared/format';
                       <td class="num">{{ p.applications }}</td>
                       <td class="num">{{ p.allotted }}</td>
                       <td class="num">{{ p.applications ? ((p.allotted / p.applications) * 100).toFixed(0) : 0 }}%</td>
+                      <td class="num" [class.text-gain]="+p.realised_gain > 0" [class.text-loss]="+p.realised_gain < 0">{{ p.realised_gain | inr }}</td>
                     </tr>
                   } @empty {
-                    <tr><td colspan="4" class="text-center text-muted py-4">
+                    <tr><td colspan="5" class="text-center text-muted py-4">
                       No applications yet. <a routerLink="/pans">Add a PAN</a>, then pick an <a routerLink="/ipos">IPO</a>.
                     </td></tr>
                   }
@@ -137,6 +138,8 @@ export class DashboardPage {
     const s = this.s();
     if (!s) return [];
     const gain = Number(s.realised_gain);
+    const expected = Number(s.expected_gain);
+    const tone = (n: number) => (n > 0 ? 'gain' : n < 0 ? 'loss' : '');
     return [
       { label: 'Applications', value: String(s.applications), hint: `${s.pending} awaiting result` },
       { label: 'Allotted', value: String(s.allotted), hint: `${s.rejected} not allotted` },
@@ -144,7 +147,9 @@ export class DashboardPage {
       { label: 'Money blocked', value: this.inr.transform(s.blocked), hint: 'in pending ASBA mandates' },
       { label: 'Invested', value: this.inr.transform(s.invested), hint: 'in allotted shares' },
       { label: 'Listing gain', value: this.inr.transform(s.realised_gain), hint: 'where listing price is known',
-        tone: gain > 0 ? 'gain' : gain < 0 ? 'loss' : '' },
+        tone: tone(gain) },
+      { label: 'Expected gain', value: this.inr.transform(s.expected_gain), hint: 'from GMP, not yet listed',
+        tone: tone(expected) },
     ];
   });
 

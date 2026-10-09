@@ -45,8 +45,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "full_name", "created_at", "pan_count"]
-        read_only_fields = ["id", "email", "created_at", "pan_count"]
+        fields = ["id", "email", "full_name", "is_staff", "created_at", "pan_count"]
+        read_only_fields = ["id", "email", "is_staff", "created_at", "pan_count"]
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):

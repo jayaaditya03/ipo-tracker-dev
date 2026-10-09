@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { ApiService, errorText } from '../core/api.service';
+import { AuthService } from '../core/auth.service';
 import {
   Application, BulkApplyResult, CATEGORY_LABELS, Category, CheckResponse,
   IPO_STATUS_LABELS, IPO_STATUS_TONES, Ipo, Pan,
@@ -63,7 +64,7 @@ const RETAIL_LIMIT = 200000;
               </div>
               <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                  <thead><tr><th>Applicant</th><th class="num">Lots</th><th class="num">Blocked</th><th>Result</th></tr></thead>
+                  <thead><tr><th>Applicant</th><th class="num">Lots</th><th class="num">Blocked</th><th>Result</th><th class="num">Gain</th></tr></thead>
                   <tbody>
                     @for (a of mine(); track a.id) {
                       <tr>
@@ -71,6 +72,13 @@ const RETAIL_LIMIT = 200000;
                         <td class="num">{{ a.lots }}</td>
                         <td class="num">{{ a.amount_blocked | inr }}</td>
                         <td><span class="badge" [class]="a.status | tone">{{ a.status_display }}</span></td>
+                        <td class="num">
+                          @if (a.listing_gain !== null) {
+                            <span [class.text-gain]="+a.listing_gain > 0" [class.text-loss]="+a.listing_gain < 0">{{ a.listing_gain | inr }}</span>
+                          } @else if (a.expected_gain !== null) {
+                            <span class="text-muted" title="From the grey market premium">{{ a.expected_gain | inr }} est.</span>
+                          } @else { — }
+                        </td>
                       </tr>
                     }
                   </tbody>
@@ -165,6 +173,32 @@ const RETAIL_LIMIT = 200000;
               </div>
             </div>
           }
+
+          @if (isStaff()) {
+            <div class="card">
+              <div class="card-header"><h5 class="mb-0">Listing price &amp; GMP</h5></div>
+              <div class="card-body">
+                <p class="text-muted text-sm">
+                  NSE's IPO feed carries neither, so enter them here. GMP is unofficial and only feeds the
+                  "est." gain until a listing price is set. Leave a box empty to clear it.
+                </p>
+                <div class="row g-2 mb-3">
+                  <div class="col-sm-6">
+                    <label class="form-label" for="listingPrice">Listing price (₹)</label>
+                    <input id="listingPrice" type="number" min="0.01" step="0.05" class="form-control" [(ngModel)]="listingPrice" />
+                  </div>
+                  <div class="col-sm-6">
+                    <label class="form-label" for="gmp">GMP (₹, can be negative)</label>
+                    <input id="gmp" type="number" step="0.5" class="form-control" [(ngModel)]="gmp" />
+                  </div>
+                </div>
+                <button class="btn btn-outline-primary" (click)="savePrices()" [disabled]="savingPrices()">
+                  {{ savingPrices() ? 'Saving…' : 'Save prices' }}
+                </button>
+                @if (pricesSaved()) { <span class="text-success text-sm ms-2">Saved.</span> }
+              </div>
+            </div>
+          }
         </div>
       </div>
     }
@@ -172,6 +206,7 @@ const RETAIL_LIMIT = 200000;
 })
 export class IpoDetailPage implements OnInit {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
   private inr = new InrPipe();
   private dates = new DatePipe('en-US');
   private num = new DecimalPipe('en-US');
@@ -193,10 +228,15 @@ export class IpoDetailPage implements OnInit {
   busy = signal(false);
   checking = signal(false);
   error = signal('');
+  savingPrices = signal(false);
+  pricesSaved = signal(false);
+  isStaff = computed(() => !!this.auth.user()?.is_staff);
 
   category: Category = 'RETAIL';
   lots = 1;
   markApplied = true;
+  listingPrice: number | null = null;
+  gmp: number | null = null;
 
   pending = computed(() => this.mine().filter((a) => a.status === 'APPLIED').length);
   canApply = computed(() => {
@@ -221,7 +261,8 @@ export class IpoDetailPage implements OnInit {
       { label: 'Allotment' + est, value: d(i.allotment_date) },
       { label: 'Refund' + est, value: d(i.refund_date) },
       { label: 'Listing' + est, value: d(i.listing_date) },
-      { label: 'GMP', value: this.inr.transform(i.gmp) },
+      { label: 'GMP', value: i.gmp === null ? '—'
+          : `${this.inr.transform(i.gmp)} (est. listing ${this.inr.transform(Number(i.cutoff_price ?? 0) + Number(i.gmp))})` },
       { label: 'Issue size', value: i.issue_size_cr ? `₹${this.num.transform(i.issue_size_cr, '1.0-2')} Cr` : '—' },
     ];
     if (i.listing_price) {
@@ -240,12 +281,30 @@ export class IpoDetailPage implements OnInit {
   }
 
   ngOnInit() {
-    this.api.ipo(Number(this.id())).subscribe({ next: (i) => this.ipo.set(i), error: (e) => this.error.set(errorText(e)) });
+    this.api.ipo(Number(this.id())).subscribe({ next: (i) => this.setIpo(i), error: (e) => this.error.set(errorText(e)) });
     this.api.pans({ is_active: true }).subscribe((p) => {
       this.pans.set(p.results);
       this.checkSel.set(new Set(p.results.map((x) => x.id)));
     });
     this.loadMine();
+  }
+
+  private setIpo(i: Ipo) {
+    this.ipo.set(i);
+    this.listingPrice = i.listing_price === null ? null : Number(i.listing_price);
+    this.gmp = i.gmp === null ? null : Number(i.gmp);
+  }
+
+  savePrices() {
+    // An emptied number input binds null (or '' in some browsers); both mean "clear".
+    const val = (v: number | null) => (v === null || (v as unknown) === '' ? null : String(v));
+    this.savingPrices.set(true);
+    this.pricesSaved.set(false);
+    this.error.set('');
+    this.api.setPrices(Number(this.id()), { listing_price: val(this.listingPrice), gmp: val(this.gmp) }).subscribe({
+      next: (i) => { this.setIpo(i); this.savingPrices.set(false); this.pricesSaved.set(true); this.loadMine(); },
+      error: (e) => { this.error.set(errorText(e)); this.savingPrices.set(false); },
+    });
   }
 
   loadMine() {

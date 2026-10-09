@@ -60,7 +60,7 @@ def sync_from_nse(client: NSEClient | None = None, *, past_days: int = 90,
 
     for rec in records.values():
         try:
-            outcome = _upsert(client, rec, detail_pause)
+            outcome = _upsert(client, rec, detail_pause, today)
         except NSEError as exc:
             report.errors.append(f"{rec.symbol}: {exc}")
             continue
@@ -78,7 +78,7 @@ def _find_existing(rec: IssueRecord) -> IPO | None:
             or IPO.objects.filter(symbol="", name__iexact=rec.name).first())
 
 
-def _upsert(client: NSEClient, rec: IssueRecord, detail_pause: float) -> str:
+def _upsert(client: NSEClient, rec: IssueRecord, detail_pause: float, today: date) -> str:
     ipo = _find_existing(rec)
     is_new = ipo is None
 
@@ -123,7 +123,7 @@ def _upsert(client: NSEClient, rec: IssueRecord, detail_pause: float) -> str:
         ipo.dates_estimated = not rec.listing_date
 
     if ipo.status != IPO.Status.WITHDRAWN:
-        ipo.status = ipo.derive_status()
+        ipo.status = ipo.derive_status(today)
 
     if not is_new and _snapshot(ipo) == before:
         return "unchanged"

@@ -8,6 +8,7 @@ table serve everybody, and it is why Application carries its own `owner`
 column rather than reaching the user through the IPO.
 """
 
+from datetime import date
 from decimal import Decimal
 
 from django.conf import settings
@@ -169,14 +170,14 @@ class IPO(models.Model):
             return ((self.listing_price - self.cutoff_price) / self.cutoff_price) * 100
         return None
 
-    def derive_status(self) -> str:
+    def derive_status(self, today: date | None = None) -> str:
         """
         Status implied by today's date. Kept as a stored column as well,
         because an issue can be withdrawn out of sequence and because
         filtering on a stored column uses an index — a computed property
         cannot.
         """
-        today = timezone.localdate()
+        today = today or timezone.localdate()
         if self.status == self.Status.WITHDRAWN:
             return self.status
         if self.listing_date and today >= self.listing_date:
@@ -295,6 +296,17 @@ class Application(models.Model):
         if not self.shares_allotted or not self.ipo.listing_price:
             return None
         return Decimal(self.shares_allotted) * (self.ipo.listing_price - self.bid_price)
+
+    @property
+    def expected_gain(self) -> Decimal | None:
+        """
+        Gain implied by the grey market premium, until a listing price is
+        known: allotted shares × (cut-off + GMP − bid). Indicative only.
+        """
+        ipo = self.ipo
+        if not self.shares_allotted or ipo.listing_price or ipo.gmp is None or not ipo.cutoff_price:
+            return None
+        return Decimal(self.shares_allotted) * (ipo.cutoff_price + ipo.gmp - self.bid_price)
 
     @property
     def is_resolved(self) -> bool:
