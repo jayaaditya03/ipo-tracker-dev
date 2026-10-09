@@ -4,7 +4,7 @@ Auth and PAN endpoints.
 
 from django.db.models import Count, Q
 from rest_framework import generics, permissions, viewsets
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenBlacklistView, TokenObtainPairView
 
 from .models import PanProfile
 from .permissions import IsOwner
@@ -26,6 +26,18 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(TokenObtainPairView):
     serializer_class = EmailTokenObtainPairSerializer
+    permission_classes = [permissions.AllowAny]
+    throttle_scope = "auth"
+
+
+class LogoutView(TokenBlacklistView):
+    """
+    POST /api/auth/logout/ {"refresh": "..."} — revokes the refresh token,
+    so the session ends on the server, not just in the browser. Open to
+    anonymous callers because the access token may already have expired;
+    holding the refresh token is the proof.
+    """
+
     permission_classes = [permissions.AllowAny]
     throttle_scope = "auth"
 

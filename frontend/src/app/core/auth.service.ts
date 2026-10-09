@@ -64,6 +64,10 @@ export class AuthService {
   }
 
   logout(): void {
+    // Revoke the refresh token server-side. Fire and forget: signing out
+    // locally must work even when the API is unreachable.
+    const refresh = this.refreshToken;
+    if (refresh) this.http.post(`${this.base}/logout/`, { refresh }).subscribe({ error: () => undefined });
     localStorage.removeItem(ACCESS);
     localStorage.removeItem(REFRESH);
     localStorage.removeItem(USER);

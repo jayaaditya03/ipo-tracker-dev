@@ -16,7 +16,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
 
   // Auth endpoints never carry a token and never trigger a refresh.
-  if (req.url.includes('/auth/login/') || req.url.includes('/auth/register/') || req.url.includes('/auth/refresh/')) {
+  if (req.url.includes('/auth/login/') || req.url.includes('/auth/register/') || req.url.includes('/auth/refresh/') || req.url.includes('/auth/logout/')) {
     return next(req);
   }
 

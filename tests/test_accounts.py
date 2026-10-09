@@ -90,3 +90,22 @@ def test_login_is_throttled(anon, user):
              for _ in range(11)]
     assert codes[:10] == [401] * 10
     assert codes[10] == 429
+
+
+@pytest.mark.django_db
+class TestLogout:
+    def _login(self, anon, user):
+        return anon.post("/api/auth/login/", {"email": user.email, "password": "s3cure-Passw0rd"}).data
+
+    def test_logout_revokes_refresh_token(self, anon, user):
+        tokens = self._login(anon, user)
+        assert anon.post("/api/auth/logout/", {"refresh": tokens["refresh"]}).status_code == 200
+        assert anon.post("/api/auth/refresh/", {"refresh": tokens["refresh"]}).status_code == 401
+
+    def test_rotated_refresh_token_cannot_be_reused(self, anon, user):
+        tokens = self._login(anon, user)
+        assert anon.post("/api/auth/refresh/", {"refresh": tokens["refresh"]}).status_code == 200
+        assert anon.post("/api/auth/refresh/", {"refresh": tokens["refresh"]}).status_code == 401
+
+    def test_garbage_token_rejected(self, anon):
+        assert anon.post("/api/auth/logout/", {"refresh": "nope"}).status_code == 401
