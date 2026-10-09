@@ -51,7 +51,9 @@ npx ng serve                      # http://localhost:4200
 | `python manage.py sync_ipos` | Pulls current, upcoming and recent IPOs from NSE. Run it daily. `--past-days N` reaches further back (default 90). |
 | `python manage.py refresh_ipo_status` | Updates each IPO's status (Open, Closed, Allotment out, Listed) from today's date. Run it daily. |
 | `python manage.py check_allotments` | Asks registrars about every pending application whose allotment date has arrived. Run it a few times on allotment days. |
+| `python manage.py backup_db` | Dumps the database to `backups/` with `pg_dump`, keeping the newest 14 (`--keep N`, `--dir PATH`). |
 | `pytest` | Runs the backend test suite. |
+| `cd frontend && npx ng test --watch=false` | Runs the frontend tests (Vitest). |
 | `ruff check .` | Lints the backend. |
 | `cd frontend && npx ng build` | Builds the frontend for production. |
 
@@ -61,7 +63,8 @@ All endpoints are under `/api/` and need `Authorization: Bearer <access>`, excep
 
 | Method | Path | |
 | --- | --- | --- |
-| POST | `/auth/register/`, `/auth/login/`, `/auth/refresh/` | Account and tokens |
+| POST | `/auth/register/`, `/auth/login/`, `/auth/refresh/` | Account and tokens. A refresh token works once; each refresh returns a new one. |
+| POST | `/auth/logout/` | `{refresh}`. Revokes the refresh token, so signing out ends the session on the server too. |
 | GET/PATCH | `/auth/me/` | Current user |
 | CRUD | `/pans/` | Your PANs. Deleting a PAN that has applications deactivates it instead. |
 | GET | `/ipos/`, `/ipos/{id}/`, `/ipos/open_now/` | IPO catalogue. Filters: `status`, `board`, `search` |
@@ -96,7 +99,7 @@ Two scripts in `scripts/` run the daily jobs and append their output to `logs/`:
 
 | Task | Script | Runs | Does |
 | --- | --- | --- | --- |
-| IPO-PRO sync | `scripts/daily-sync.cmd` | 08:00 | `sync_ipos` + `refresh_ipo_status` → `logs/sync.log` |
+| IPO-PRO sync | `scripts/daily-sync.cmd` | 08:00 | `sync_ipos` + `refresh_ipo_status` + `flushexpiredtokens` + `backup_db` → `logs/sync.log` |
 | IPO-PRO allotment checks | `scripts/daily-checks.cmd` | 21:00 | `refresh_ipo_status` + `check_allotments` → `logs/checks.log` |
 
 Register them once, from the repo root in PowerShell:
@@ -109,6 +112,18 @@ schtasks /Create /F /TN "IPO-PRO allotment checks" /SC DAILY /ST 21:00 /TR "`"$P
 Both commands exit non-zero when nothing worked (NSE unreachable, or every allotment check failed), so Task Scheduler's "Last Run Result" flags a bad night. Warnings, such as a registrar whose replies the app no longer understands, go to the same log.
 
 The tasks run while you're signed in to Windows, and PostgreSQL must be running. Run one immediately with `schtasks /Run /TN "IPO-PRO sync"`, and remove one with `schtasks /Delete /TN "IPO-PRO sync"`. On macOS or Linux, run the same `manage.py` commands from `crontab -e`.
+
+## Backups
+
+`backup_db` runs every morning with the sync task. It needs `pg_dump` on PATH; on Windows add `C:\Program Files\PostgreSQL\16\bin` to PATH, or set `PG_DUMP` to the full path of `pg_dump.exe`. A dump is written under a temporary name and only renamed once complete, so a failed run never replaces a good backup.
+
+Restore into the database (this replaces its contents):
+
+```bash
+pg_restore --clean --if-exists --no-owner -U ipo_user -d ipo_tracker backups/ipo_tracker-YYYYMMDD-HHMMSS.dump
+```
+
+**Keep a copy of `FIELD_ENCRYPTION_KEY` from `.env`.** PANs in the dumps are encrypted with it, and without it they can't be read back. Store it somewhere other than the backup folder (a password manager is ideal), so a leaked backup doesn't carry its own key. For protection against a dead disk, point `--dir` at another drive or a synced folder.
 
 ## How the data sources work
 
